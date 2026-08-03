@@ -190,12 +190,15 @@ func Play() {
 		log.Fatal(err)
 	}
 
-	// Get game data and prefix directory
+	// Get game data directory
 	gameDataDir := filepath.Join(homeDir, "Games", metadata.Name)
-	prefixDir := filepath.Join(gameDataDir, "prefix")
 
-	// Update run script to use selected runner
-	toWrite := fmt.Sprintf(`#!/bin/sh
+	switch metadata.Type {
+	case "windows":
+		prefixDir := filepath.Join(gameDataDir, "prefix")
+
+		// Update run script to use selected runner
+		toWrite := fmt.Sprintf(`#!/bin/sh
 cd "%s/files"
 
 # Set environment variables for umu-launcher
@@ -206,19 +209,32 @@ export WINEPREFIX="%s"
 umu-run "%s"
 `, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
 
-	err = os.WriteFile(filepath.Join(gameDataDir, "run.sh"), []byte(toWrite), 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
+		err = os.WriteFile(filepath.Join(gameDataDir, "run.sh"), []byte(toWrite), 0755)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	// Run game
-	err = os.Chdir(gameDataDir)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = syscall.Exec("run.sh", []string{}, os.Environ())
-	if err != nil {
-		log.Fatal(err)
+		// Run game
+		err = os.Chdir(gameDataDir)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = syscall.Exec("run.sh", []string{}, os.Environ())
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "bin", "script":
+		// Run Linux binary/script
+
+		// Run game
+		err = os.Chdir(filepath.Join(gameDataDir, "files"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = syscall.Exec(metadata.Run, []string{}, os.Environ())
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
