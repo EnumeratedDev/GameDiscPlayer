@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
@@ -107,25 +108,52 @@ func activate() {
 		}
 	}
 	// Play button
-	playButton := gtk.NewButtonWithLabel("Play from disc")
-	playButton.ConnectClicked(PlayFromDisc)
-	if !metadata.RunFromDisc {
-		playButton.SetLabel("Play from disc (This game can't run from disc)")
-		playButton.SetSensitive(false)
-	}
+	playButton := gtk.NewButtonWithLabel("Play")
 	// Install and uninstall buttons
 	installButton := gtk.NewButtonWithLabel("Install")
 	uninstallButton := gtk.NewButtonWithLabel("Uninstall")
 
-	installButton.ConnectClicked(func() { InstallGame(); installButton.SetVisible(false); uninstallButton.SetVisible(true) })
-	uninstallButton.ConnectClicked(func() { UninstallGame(); installButton.SetVisible(true); uninstallButton.SetVisible(false) })
+	installButton.ConnectClicked(func() {
+		InstallGame()
+		installButton.SetVisible(false)
+		uninstallButton.SetVisible(true)
+
+		playButton.SetLabel("Play")
+		playButton.SetSensitive(true)
+		playButton.ConnectClicked(Play)
+	})
+	uninstallButton.ConnectClicked(func() {
+		UninstallGame()
+		installButton.SetVisible(true)
+		uninstallButton.SetVisible(false)
+
+		if metadata.RunFromDisc {
+			playButton.SetLabel("Play from disc")
+			playButton.SetSensitive(true)
+			playButton.ConnectClicked(PlayFromDisc)
+		} else {
+			playButton.SetLabel("Play from disc (This game can't run from disc)")
+			playButton.SetSensitive(false)
+			playButton.ConnectClicked(nil)
+		}
+	})
 
 	if _, err := os.Stat(filepath.Join(homeDir, "Games", metadata.Name)); err == nil {
 		installButton.SetVisible(false)
 		uninstallButton.SetVisible(true)
+
+		playButton.ConnectClicked(Play)
 	} else {
 		installButton.SetVisible(true)
 		uninstallButton.SetVisible(false)
+
+		if metadata.RunFromDisc {
+			playButton.SetLabel("Play from disc")
+			playButton.ConnectClicked(PlayFromDisc)
+		} else {
+			playButton.SetLabel("Play from disc (This game can't run from disc)")
+			playButton.SetSensitive(false)
+		}
 	}
 
 	labelBox.Append(gameIcon)
@@ -144,6 +172,33 @@ func activate() {
 	window.SetChild(mainBox)
 
 	window.SetVisible(true)
+}
+
+func Play() {
+	// Close launcher windows
+	for _, window := range app.Windows() {
+		window.Close()
+	}
+
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Get game data directory
+	gameDataDir := filepath.Join(homeDir, "Games", metadata.Name)
+
+	// Run script
+	err = os.Chdir(gameDataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = syscall.Exec("run.sh", []string{}, os.Environ())
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func PlayFromDisc() {
@@ -180,7 +235,8 @@ func PlayFromDisc() {
 		// Run Windows executables with umu
 
 		// Check for umu
-		if _, err := exec.LookPath("umu-run"); err != nil {
+		umuPath, err := exec.LookPath("umu-run")
+		if err != nil {
 			log.Fatalf("umu-run not found in PATH")
 		}
 
@@ -206,34 +262,29 @@ func PlayFromDisc() {
 			}
 		}
 
-		// Setup command
-		cmd := exec.Command("umu-run", metadata.Run)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Dir = filepath.Join(workDir, "files")
-
 		// Setup environment
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner)
-		cmd.Env = append(cmd.Env, "WINEPREFIX="+filepath.Join(homeDir, "Games", metadata.Name, "prefix"))
+		env := os.Environ()
+		env = append(env, "PROTONPATH="+selectedRunner)
+		env = append(env, "WINEPREFIX="+filepath.Join(homeDir, "Games", metadata.Name, "prefix"))
 
-		err = cmd.Run()
+		// Run game
+		err = os.Chdir(filepath.Join(workDir, "files"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = syscall.Exec(umuPath, []string{metadata.Run}, env)
 		if err != nil {
 			log.Fatal(err)
 		}
 	case "bin", "script":
 		// Run Linux binary/script
 
-		// Setup command
-		cmd := exec.Command(metadata.Run)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Dir = filepath.Join(workDir, "files")
-
-		// Setup environment
-		cmd.Env = os.Environ()
-
-		err := cmd.Run()
+		// Run game
+		err = os.Chdir(filepath.Join(workDir, "files"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = syscall.Exec(metadata.Run, []string{}, os.Environ())
 		if err != nil {
 			log.Fatal(err)
 		}
