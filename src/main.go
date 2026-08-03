@@ -155,6 +155,10 @@ func activate() {
 			playButton.SetSensitive(false)
 		}
 	}
+	if selectedRunner == "" {
+		playButton.SetSensitive(false)
+		installButton.SetSensitive(false)
+	}
 
 	labelBox.Append(gameIcon)
 	labelBox.Append(versionLabel)
@@ -186,15 +190,32 @@ func Play() {
 		log.Fatal(err)
 	}
 
-	// Get game data directory
+	// Get game data and prefix directory
 	gameDataDir := filepath.Join(homeDir, "Games", metadata.Name)
+	prefixDir := filepath.Join(gameDataDir, "prefix")
 
-	// Run script
-	err = os.Chdir(gameDataDir)
+	// Update run script to use selected runner
+	toWrite := fmt.Sprintf(`#!/bin/sh
+cd "%s/files"
+
+# Set environment variables for umu-launcher
+[ -z "$PROTONPATH" ] && export PROTONPATH="%s"
+export WINEPREFIX="%s"
+
+# Run game
+umu-run "%s"
+`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
+
+	err = os.WriteFile(filepath.Join(gameDataDir, "run.sh"), []byte(toWrite), 0755)
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// Run game
+	err = os.Chdir(gameDataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
 	err = syscall.Exec("run.sh", []string{}, os.Environ())
 	if err != nil {
 		log.Fatal(err)
@@ -240,10 +261,10 @@ func PlayFromDisc() {
 			log.Fatalf("umu-run not found in PATH")
 		}
 
-		prefixPath := filepath.Join(gameDataDir, "prefix")
+		prefixDir := filepath.Join(gameDataDir, "prefix")
 
 		// Run winetricks
-		if _, err := os.Stat(prefixPath); err != nil && len(metadata.WinetricksVerbs) > 0 {
+		if _, err := os.Stat(prefixDir); err != nil && len(metadata.WinetricksVerbs) > 0 {
 			// Setup command
 			cmd := exec.Command("umu-run", "winetricks")
 			cmd.Args = append(cmd.Args, metadata.WinetricksVerbs...)
@@ -254,7 +275,7 @@ func PlayFromDisc() {
 			// Setup environment
 			cmd.Env = os.Environ()
 			cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner)
-			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixPath)
+			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 			err = cmd.Run()
 			if err != nil {
@@ -337,7 +358,7 @@ func InstallGame() {
 		log.Fatal(err)
 	}
 
-	prefixPath := filepath.Join(gameDataDir, "prefix")
+	prefixDir := filepath.Join(gameDataDir, "prefix")
 
 	// Create run script and desktop file
 	if metadata.Type == "windows" {
@@ -345,12 +366,12 @@ func InstallGame() {
 cd "%s/files"
 
 # Set environment variables for umu-launcher
-export PROTONPATH="%s"
+[ -z "$PROTONPATH" ] && export PROTONPATH="%s"
 export WINEPREFIX="%s"
 
 # Run game
 umu-run "%s"
-`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner, homeDir, "$HOME"), strings.ReplaceAll(prefixPath, homeDir, "$HOME"), metadata.Run)
+`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
 
 		err = os.WriteFile(filepath.Join(gameDataDir, "run.sh"), []byte(toWrite), 0755)
 		if err != nil {
@@ -390,7 +411,7 @@ rm -rf "%s"
 	}
 
 	// Setup prefix
-	if _, err := os.Stat(prefixPath); err != nil && len(metadata.WinetricksVerbs) > 0 {
+	if _, err := os.Stat(prefixDir); err != nil && len(metadata.WinetricksVerbs) > 0 {
 		// Setup command
 		cmd := exec.Command("umu-run", "winetricks")
 		cmd.Args = append(cmd.Args, metadata.WinetricksVerbs...)
@@ -401,7 +422,7 @@ rm -rf "%s"
 		// Setup environment
 		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner)
-		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixPath)
+		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 		err = cmd.Run()
 		if err != nil {
