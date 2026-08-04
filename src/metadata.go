@@ -19,9 +19,10 @@ type Metadata struct {
 }
 
 var typeStrings map[string]string = map[string]string{
-	"windows": "Windows",
-	"linux":   "Linux",
-	"gba":     "Gameboy Advance",
+	"windows": "Windows executable",
+	"bin":     "Linux script",
+	"script":  "Linux script",
+	"gba":     "Gameboy Advance ROM",
 }
 
 func ReadMetadata() (Metadata, error) {

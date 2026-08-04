@@ -15,7 +15,7 @@ import (
 
 var app *gtk.Application
 var metadata Metadata
-var selectedRunner string
+var selectedRunner *Runner
 
 func main() {
 	var err error
@@ -82,31 +82,31 @@ func activate() {
 	scrolledWindow.SetChild(textView)
 	// Runner dropdown
 	runnerDropdown := gtk.NewDropDownFromStrings(nil)
-	if metadata.Type == "windows" {
-		runners, err := GetWindowsRunners()
-		if err != nil || len(runners) == 0 {
-			runnerDropdown.SetSensitive(false)
-			runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
-		} else {
-			options := make([]string, 0)
-			for k, v := range runners {
-				if selectedRunner == "" {
-					selectedRunner = v
+	setRunnerDropdownOptions := func() {
+		switch metadata.Type {
+		case "windows":
+			runners, err := GetWindowsRunners()
+			if err != nil || len(runners) == 0 {
+				runnerDropdown.SetSensitive(false)
+				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
+			} else {
+				options := make([]string, 0)
+				for _, runner := range runners {
+					if strings.HasPrefix(runner.Path, "https://") || strings.HasPrefix(runner.Path, "http://") {
+						options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
+					} else {
+						options = append(options, runner.DisplayName)
+					}
 				}
-
-				if strings.HasPrefix(v, "https://") || strings.HasPrefix(v, "http://") {
-					options = append(options, fmt.Sprintf("%s (Downloadable)", k))
-				} else {
-					options = append(options, k)
-				}
+				selectedRunner = &runners[0]
+				runnerDropdown.SetModel(gtk.NewStringList(options))
+				runnerDropdown.Connect("notify::selected", func() {
+					selectedRunner = &runners[runnerDropdown.Selected()]
+				})
 			}
-			runnerDropdown.SetModel(gtk.NewStringList(options))
-			runnerDropdown.Connect("notify::selected", func() {
-				obj := runnerDropdown.SelectedItem().Cast().(*gtk.StringObject)
-				selectedRunner = strings.TrimSpace(strings.SplitN(obj.String(), "(", 2)[0])
-			})
 		}
 	}
+	setRunnerDropdownOptions()
 	// Play button
 	playButton := gtk.NewButtonWithLabel("Play")
 	// Install and uninstall buttons
@@ -115,6 +115,7 @@ func activate() {
 
 	installButton.ConnectClicked(func() {
 		InstallGame()
+		setRunnerDropdownOptions()
 		installButton.SetVisible(false)
 		uninstallButton.SetVisible(true)
 
@@ -155,7 +156,7 @@ func activate() {
 			playButton.SetSensitive(false)
 		}
 	}
-	if selectedRunner == "" {
+	if selectedRunner == nil {
 		playButton.SetSensitive(false)
 		installButton.SetSensitive(false)
 	}
@@ -168,7 +169,9 @@ func activate() {
 	metadataBox.Append(labelBox)
 	metadataBox.Append(scrolledWindow)
 	mainBox.Append(metadataBox)
-	mainBox.Append(runnerDropdown)
+	if metadata.Type != "bin" || metadata.Type != "script" {
+		mainBox.Append(runnerDropdown)
+	}
 	mainBox.Append(playButton)
 	mainBox.Append(installButton)
 	mainBox.Append(uninstallButton)
@@ -195,7 +198,11 @@ func Play() {
 
 	switch metadata.Type {
 	case "windows":
+
 		prefixDir := filepath.Join(gameDataDir, "prefix")
+
+		// Download runner if required
+		selectedRunner.Download()
 
 		// Update run script to use selected runner
 		toWrite := fmt.Sprintf(`#!/bin/sh
@@ -207,7 +214,7 @@ export WINEPREFIX="%s"
 
 # Run game
 umu-run "%s"
-`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
+`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner.Path, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
 
 		err = os.WriteFile(filepath.Join(gameDataDir, "run.sh"), []byte(toWrite), 0755)
 		if err != nil {
@@ -271,6 +278,9 @@ func PlayFromDisc() {
 	case "windows":
 		// Run Windows executables with umu
 
+		// Download runner if required
+		selectedRunner.Download()
+
 		// Check for umu
 		umuPath, err := exec.LookPath("umu-run")
 		if err != nil {
@@ -290,7 +300,7 @@ func PlayFromDisc() {
 
 			// Setup environment
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner)
+			cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner.Path)
 			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 			err = cmd.Run()
@@ -301,7 +311,7 @@ func PlayFromDisc() {
 
 		// Setup environment
 		env := os.Environ()
-		env = append(env, "PROTONPATH="+selectedRunner)
+		env = append(env, "PROTONPATH="+selectedRunner.Path)
 		env = append(env, "WINEPREFIX="+filepath.Join(homeDir, "Games", metadata.Name, "prefix"))
 
 		// Run game
@@ -377,7 +387,8 @@ func InstallGame() {
 	prefixDir := filepath.Join(gameDataDir, "prefix")
 
 	// Create run script and desktop file
-	if metadata.Type == "windows" {
+	switch metadata.Type {
+	case "windows":
 		toWrite := fmt.Sprintf(`#!/bin/sh
 cd "%s/files"
 
@@ -387,7 +398,7 @@ export WINEPREFIX="%s"
 
 # Run game
 umu-run "%s"
-`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
+`, strings.ReplaceAll(gameDataDir, homeDir, "$HOME"), strings.ReplaceAll(selectedRunner.Path, homeDir, "$HOME"), strings.ReplaceAll(prefixDir, homeDir, "$HOME"), metadata.Run)
 
 		err = os.WriteFile(filepath.Join(gameDataDir, "run.sh"), []byte(toWrite), 0755)
 		if err != nil {
@@ -411,38 +422,41 @@ Categories=Game;
 		if err != nil {
 			log.Fatal(err)
 		}
-	}
 
-	// Create uninstall script
-	toWrite := fmt.Sprintf(`#!/bin/sh
+		// Create uninstall script
+		toWrite = fmt.Sprintf(`#!/bin/sh
 # Remove desktop file
 rm -f "%s"
 
 # Remove game data directory
 rm -rf "%s"
 `, strings.ReplaceAll(filepath.Join(homeDir, ".local/share/applications/games", metadata.Name+".desktop"), homeDir, "$HOME"), strings.ReplaceAll(gameDataDir, homeDir, "$HOME"))
-	err = os.WriteFile(filepath.Join(gameDataDir, "uninstall.sh"), []byte(toWrite), 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Setup prefix
-	if _, err := os.Stat(prefixDir); err != nil && len(metadata.WinetricksVerbs) > 0 {
-		// Setup command
-		cmd := exec.Command("umu-run", "winetricks")
-		cmd.Args = append(cmd.Args, metadata.WinetricksVerbs...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		cmd.Dir = filepath.Join(gameDataDir, "files")
-
-		// Setup environment
-		cmd.Env = os.Environ()
-		cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner)
-		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
-
-		err = cmd.Run()
+		err = os.WriteFile(filepath.Join(gameDataDir, "uninstall.sh"), []byte(toWrite), 0755)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		// Download runner if required
+		selectedRunner.Download()
+
+		// Setup prefix
+		if _, err := os.Stat(prefixDir); err != nil && len(metadata.WinetricksVerbs) > 0 {
+			// Setup command
+			cmd := exec.Command("umu-run", "winetricks")
+			cmd.Args = append(cmd.Args, metadata.WinetricksVerbs...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			cmd.Dir = filepath.Join(gameDataDir, "files")
+
+			// Setup environment
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, "PROTONPATH="+selectedRunner.Path)
+			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
+
+			err = cmd.Run()
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }
