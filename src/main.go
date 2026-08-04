@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -107,55 +108,84 @@ func activate() {
 		}
 	}
 	setRunnerDropdownOptions()
-	// Play button
+	// Play buttons
 	playButton := gtk.NewButtonWithLabel("Play")
+	playButton.ConnectClicked(func() {
+		if _, err := os.Stat(filepath.Join(homeDir, "Games", metadata.Name)); err == nil || !metadata.RunFromDisc {
+			window.SetSensitive(false)
+
+			progressWindow := NewProgressWindow("Running "+metadata.Name+"...", 0)
+
+			go Play(progressWindow)
+		} else {
+			window.SetSensitive(false)
+
+			progressWindow := NewProgressWindow("Running "+metadata.Name+" from disc...", 0)
+
+			go PlayFromDisc(progressWindow)
+		}
+	})
 	// Install and uninstall buttons
 	installButton := gtk.NewButtonWithLabel("Install")
 	uninstallButton := gtk.NewButtonWithLabel("Uninstall")
 
 	installButton.ConnectClicked(func() {
-		InstallGame()
-		setRunnerDropdownOptions()
-		installButton.SetVisible(false)
-		uninstallButton.SetVisible(true)
+		window.SetSensitive(false)
 
-		playButton.SetLabel("Play")
-		playButton.SetSensitive(true)
-		playButton.ConnectClicked(Play)
+		progressWindow := NewProgressWindow("Installing "+metadata.Name+"...", 0)
+
+		onFinish := func() {
+			setRunnerDropdownOptions()
+			installButton.SetVisible(false)
+			uninstallButton.SetVisible(true)
+
+			playButton.SetLabel("Play")
+			playButton.SetSensitive(true)
+
+			window.SetSensitive(true)
+		}
+
+		go InstallGame(progressWindow, onFinish)
+
 	})
 	uninstallButton.ConnectClicked(func() {
-		UninstallGame()
-		installButton.SetVisible(true)
-		uninstallButton.SetVisible(false)
+		window.SetSensitive(false)
 
-		if metadata.RunFromDisc {
-			playButton.SetLabel("Play from disc")
-			playButton.SetSensitive(true)
-			playButton.ConnectClicked(PlayFromDisc)
-		} else {
-			playButton.SetLabel("Play from disc (This game can't run from disc)")
-			playButton.SetSensitive(false)
-			playButton.ConnectClicked(nil)
+		progressWindow := NewProgressWindow("Running uninstall script...", 0)
+
+		onFinish := func() {
+			installButton.SetVisible(true)
+			uninstallButton.SetVisible(false)
+
+			if metadata.RunFromDisc {
+				playButton.SetLabel("Play from disc")
+				playButton.SetSensitive(true)
+			} else {
+				playButton.SetLabel("Play from disc (This game can't run from disc)")
+				playButton.SetSensitive(false)
+			}
+
+			window.SetSensitive(true)
 		}
+
+		go UninstallGame(progressWindow, onFinish)
 	})
 
 	if _, err := os.Stat(filepath.Join(homeDir, "Games", metadata.Name)); err == nil {
 		installButton.SetVisible(false)
 		uninstallButton.SetVisible(true)
-
-		playButton.ConnectClicked(Play)
 	} else {
 		installButton.SetVisible(true)
 		uninstallButton.SetVisible(false)
 
 		if metadata.RunFromDisc {
 			playButton.SetLabel("Play from disc")
-			playButton.ConnectClicked(PlayFromDisc)
 		} else {
 			playButton.SetLabel("Play from disc (This game can't run from disc)")
 			playButton.SetSensitive(false)
 		}
 	}
+
 	if selectedRunner == nil {
 		playButton.SetSensitive(false)
 		installButton.SetSensitive(false)
@@ -181,12 +211,7 @@ func activate() {
 	window.SetVisible(true)
 }
 
-func Play() {
-	// Close launcher windows
-	for _, window := range app.Windows() {
-		window.Close()
-	}
-
+func Play(progressWindow ProgressWindow) {
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -201,8 +226,10 @@ func Play() {
 
 		prefixDir := filepath.Join(gameDataDir, "prefix")
 
+		progressWindow := NewProgressWindow("Downloading "+selectedRunner.DisplayName, 0)
+
 		// Download runner if required
-		selectedRunner.Download()
+		selectedRunner.Download(progressWindow)
 
 		// Update run script to use selected runner
 		toWrite := fmt.Sprintf(`#!/bin/sh
@@ -221,38 +248,48 @@ umu-run "%s"
 			log.Fatal(err)
 		}
 
-		// Run game
-		err = os.Chdir(gameDataDir)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = syscall.Exec("run.sh", []string{}, os.Environ())
-		if err != nil {
-			log.Fatal(err)
-		}
+		glib.IdleAdd(func() {
+			// Close launcher windows
+			for _, window := range app.Windows() {
+				window.Close()
+			}
+
+			// Run game
+			err = os.Chdir(gameDataDir)
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = syscall.Exec("run.sh", []string{}, os.Environ())
+			if err != nil {
+				log.Fatal(err)
+			}
+		})
 	case "bin", "script":
 		// Run Linux binary/script
 
-		// Run game
-		err = os.Chdir(filepath.Join(gameDataDir, "files"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = syscall.Exec(metadata.Run, []string{}, os.Environ())
-		if err != nil {
-			log.Fatal(err)
-		}
+		// Close launcher windows
+		glib.IdleAdd(func() {
+			// Close launcher windows
+			for _, window := range app.Windows() {
+				window.Close()
+			}
+
+			// Run game
+			err = os.Chdir(filepath.Join(gameDataDir, "files"))
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = syscall.Exec(metadata.Run, []string{}, os.Environ())
+			if err != nil {
+				log.Fatal(err)
+			}
+		})
 	}
 }
 
-func PlayFromDisc() {
+func PlayFromDisc(progressWindow ProgressWindow) {
 	if !metadata.RunFromDisc {
 		return
-	}
-
-	// Close launcher windows
-	for _, window := range app.Windows() {
-		window.Close()
 	}
 
 	// Get working directory
@@ -279,7 +316,7 @@ func PlayFromDisc() {
 		// Run Windows executables with umu
 
 		// Download runner if required
-		selectedRunner.Download()
+		selectedRunner.Download(progressWindow)
 
 		// Check for umu
 		umuPath, err := exec.LookPath("umu-run")
@@ -291,6 +328,10 @@ func PlayFromDisc() {
 
 		// Run winetricks
 		if _, err := os.Stat(prefixDir); err != nil && len(metadata.WinetricksVerbs) > 0 {
+			progressWindow.SetStatus("Setting up prefix...")
+			progressWindow.Set(0)
+			progressWindow.SetTotal(1)
+
 			// Setup command
 			cmd := exec.Command("umu-run", "winetricks")
 			cmd.Args = append(cmd.Args, metadata.WinetricksVerbs...)
@@ -314,31 +355,45 @@ func PlayFromDisc() {
 		env = append(env, "PROTONPATH="+selectedRunner.Path)
 		env = append(env, "WINEPREFIX="+filepath.Join(homeDir, "Games", metadata.Name, "prefix"))
 
-		// Run game
-		err = os.Chdir(filepath.Join(workDir, "files"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = syscall.Exec(umuPath, []string{metadata.Run}, env)
-		if err != nil {
-			log.Fatal(err)
-		}
+		glib.IdleAdd(func() {
+			// Close launcher windows
+			for _, window := range app.Windows() {
+				window.Close()
+			}
+
+			// Run game
+			err = os.Chdir(filepath.Join(workDir, "files"))
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = syscall.Exec(umuPath, []string{metadata.Run}, env)
+			if err != nil {
+				log.Fatal(err)
+			}
+		})
 	case "bin", "script":
 		// Run Linux binary/script
 
-		// Run game
-		err = os.Chdir(filepath.Join(workDir, "files"))
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = syscall.Exec(metadata.Run, []string{}, os.Environ())
-		if err != nil {
-			log.Fatal(err)
-		}
+		glib.IdleAdd(func() {
+			// Close launcher windows
+			for _, window := range app.Windows() {
+				window.Close()
+			}
+
+			// Run game
+			err = os.Chdir(filepath.Join(workDir, "files"))
+			if err != nil {
+				log.Fatal(err)
+			}
+			err = syscall.Exec(metadata.Run, []string{}, os.Environ())
+			if err != nil {
+				log.Fatal(err)
+			}
+		})
 	}
 }
 
-func InstallGame() {
+func InstallGame(progressWindow ProgressWindow, onFinish func()) {
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -358,28 +413,19 @@ func InstallGame() {
 		log.Fatal(err)
 	}
 
-	fsDir := os.DirFS(filepath.Join(workDir, "files"))
-	err = os.CopyFS(filepath.Join(gameDataDir, "files"), fsDir)
+	err = CopyRecursivelyWithProgress(filepath.Join(workDir, "files"), filepath.Join(gameDataDir, "files"), progressWindow)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Copy icon
-	b, err := os.ReadFile(filepath.Join(workDir, "icon.png"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = os.WriteFile(filepath.Join(gameDataDir, "icon.png"), b, 0644)
+	err = Copy(filepath.Join(workDir, "icon.png"), filepath.Join(gameDataDir, "icon.png"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Copy metadata
-	b, err = os.ReadFile(filepath.Join(workDir, "metadata.yml"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = os.WriteFile(filepath.Join(gameDataDir, "metadata.yml"), b, 0644)
+	err = Copy(filepath.Join(workDir, "metadata.yml"), filepath.Join(gameDataDir, "metadata.yml"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -437,10 +483,14 @@ rm -rf "%s"
 		}
 
 		// Download runner if required
-		selectedRunner.Download()
+		selectedRunner.Download(progressWindow)
 
 		// Setup prefix
 		if _, err := os.Stat(prefixDir); err != nil && len(metadata.WinetricksVerbs) > 0 {
+			progressWindow.SetStatus("Setting up prefix...")
+			progressWindow.Set(0)
+			progressWindow.SetTotal(1)
+
 			// Setup command
 			cmd := exec.Command("umu-run", "winetricks")
 			cmd.Args = append(cmd.Args, metadata.WinetricksVerbs...)
@@ -459,9 +509,17 @@ rm -rf "%s"
 			}
 		}
 	}
+
+	progressWindow.CloseWindow()
+
+	glib.IdleAdd(func() {
+		onFinish()
+	})
 }
 
-func UninstallGame() {
+func UninstallGame(progressWindow ProgressWindow, onFinish func()) {
+	progressWindow.Pulse()
+
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -469,15 +527,23 @@ func UninstallGame() {
 	}
 
 	// Get game data directory
+	if metadata.Name == "" {
+		// Just to be sure I don't accidentally delete everything in the Games directory
+		log.Fatalf("game name is empty")
+	}
 	gameDataDir := filepath.Join(homeDir, "Games", metadata.Name)
 
-	// Setup command
-	cmd := exec.Command(filepath.Join(gameDataDir, "uninstall.sh"))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	// Removing files
+	RemoveDirectoryRecursively(gameDataDir, progressWindow)
 
-	err = cmd.Run()
-	if err != nil {
+	err = os.Remove(filepath.Join(homeDir, ".local/share/applications/games", metadata.Name+".desktop"))
+	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
 	}
+
+	progressWindow.CloseWindow()
+
+	glib.IdleAdd(func() {
+		onFinish()
+	})
 }
