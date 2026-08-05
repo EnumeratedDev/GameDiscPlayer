@@ -35,6 +35,10 @@ func GetWindowsRunners() (runners []Runner, err error) {
 	if err != nil {
 		return
 	}
+
+	// Show installed runners in reverse alphabetical order
+	slices.Reverse(dirEntries)
+
 	for _, entry := range dirEntries {
 		entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/windows", entry.Name())
 
