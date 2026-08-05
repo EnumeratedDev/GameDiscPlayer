@@ -67,12 +67,6 @@ func activate() {
 }
 
 func createLauncherWindow() {
-	// Get user home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-
 	// Setup main launcher window
 	launcher.MainWindow = gtk.NewApplicationWindow(launcher.App)
 	launcher.MainWindow.SetTitle("Play " + launcher.Metadata.Name)
@@ -157,7 +151,7 @@ func createLauncherWindow() {
 	// Play buttons
 	playButton := gtk.NewButtonWithLabel("Play")
 	playButton.ConnectClicked(func() {
-		if _, err := os.Stat(filepath.Join(homeDir, "Games", launcher.Metadata.Name)); err == nil || !launcher.Metadata.RunFromDisc {
+		if IsGameInstalled() {
 			go Play()
 		} else {
 			go PlayFromDisc()
@@ -373,6 +367,7 @@ func PlayFromDisc() {
 
 		// Setup environment
 		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Path)
 		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
@@ -394,6 +389,10 @@ func PlayFromDisc() {
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
 		err = cmd.Start()
 		if err != nil {
