@@ -44,7 +44,6 @@ func main() {
 
 	// Set data directory
 	launcher.DataDir = filepath.Join(homeDir, "Games", launcher.Metadata.Name)
-	fmt.Println(launcher.DataDir)
 
 	// Parse options
 	err = launcher.ParseOptions()
