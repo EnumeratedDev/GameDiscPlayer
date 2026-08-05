@@ -103,7 +103,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 	return
 }
 
-func (runner *Runner) Download(progressWindow ProgressWindow) error {
+func (runner *Runner) Download() error {
 	if !strings.HasPrefix(runner.Path, "https://") && !strings.HasPrefix(runner.Path, "http://") {
 		return nil
 	}
@@ -135,15 +135,14 @@ func (runner *Runner) Download(progressWindow ProgressWindow) error {
 	}
 	defer response.Body.Close()
 
-	progressWindow.SetStatus("Downloading " + runner.DisplayName + "...")
-	progressWindow.SetTotal64(response.ContentLength)
+	launcher.ProgressWindow.ResetProgressWindow64("Downloading "+runner.DisplayName+"...", 0, response.ContentLength)
 
-	_, err = io.Copy(io.MultiWriter(f, &progressWindow), response.Body)
+	_, err = io.Copy(io.MultiWriter(f, &launcher.ProgressWindow), response.Body)
 	if err != nil {
 		return err
 	}
 
-	progressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
+	launcher.ProgressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
 
 	// Setup extract command
 	cmd := exec.Command("tar", "xf", filepath.Join(homeDir, ".cache", path.Base(runner.Path)))

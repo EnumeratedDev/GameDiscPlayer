@@ -41,7 +41,7 @@ func Copy(source, dest string) error {
 	return nil
 }
 
-func CopyRecursivelyWithProgress(source, dest string, progressWindow ProgressWindow) error {
+func CopyRecursivelyWithProgress(source, dest string) error {
 	paths := make([]string, 0)
 
 	// Discover paths
@@ -54,12 +54,11 @@ func CopyRecursivelyWithProgress(source, dest string, progressWindow ProgressWin
 		return err
 	}
 
-	progressWindow.SetTotal(len(paths))
-	progressWindow.SetStatus("Copying files...")
+	launcher.ProgressWindow.ResetProgressWindow("Copying files...", 0, len(paths))
 
 	for i, path := range paths {
 
-		progressWindow.Set(i)
+		launcher.ProgressWindow.Set(i)
 
 		stat, err := os.Lstat(path)
 		if err != nil {
@@ -98,12 +97,12 @@ func CopyRecursivelyWithProgress(source, dest string, progressWindow ProgressWin
 		}
 	}
 
-	progressWindow.Set(len(paths))
+	launcher.ProgressWindow.Set(len(paths))
 
 	return nil
 }
 
-func RemoveDirectoryRecursively(dir string, progressWindow ProgressWindow) error {
+func RemoveDirectoryRecursively(dir string) error {
 	paths := make([]string, 0)
 
 	// Discover paths
@@ -118,12 +117,11 @@ func RemoveDirectoryRecursively(dir string, progressWindow ProgressWindow) error
 
 	slices.Reverse(paths)
 
-	progressWindow.SetTotal(len(paths))
-	progressWindow.SetStatus("Removing files...")
+	launcher.ProgressWindow.ResetProgressWindow("Removing files...", 0, len(paths))
 
 	for i, path := range paths {
 
-		progressWindow.Set(i)
+		launcher.ProgressWindow.Set(i)
 
 		fmt.Printf("Removing %s...\n", path)
 		err = os.Remove(path)
@@ -132,7 +130,7 @@ func RemoveDirectoryRecursively(dir string, progressWindow ProgressWindow) error
 		}
 	}
 
-	progressWindow.Set(len(paths))
+	launcher.ProgressWindow.Set(len(paths))
 
 	return nil
 }

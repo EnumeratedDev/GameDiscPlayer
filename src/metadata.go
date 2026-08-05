@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v3"
@@ -25,16 +26,20 @@ var typeStrings map[string]string = map[string]string{
 	"gba":     "Gameboy Advance ROM",
 }
 
-func ReadMetadata() (Metadata, error) {
+func ReadMetadata() (metadata Metadata, err error) {
 	data, err := os.ReadFile("metadata.yml")
 	if err != nil {
-		return Metadata{}, err
+		return
 	}
 
-	var metadata Metadata
 	err = yaml.Unmarshal(data, &metadata)
 	if err != nil {
-		return Metadata{}, err
+		return
+	}
+
+	// Validate metadata
+	if metadata.Name == "" {
+		return metadata, fmt.Errorf("game name cannot be empty")
 	}
 
 	return metadata, nil
