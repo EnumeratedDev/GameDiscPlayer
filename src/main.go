@@ -102,7 +102,7 @@ func createLauncherWindow() {
 	// Labels
 	versionLabel := gtk.NewLabel("Version: " + launcher.Metadata.Version)
 	developerLabel := gtk.NewLabel("Developer: " + launcher.Metadata.Developer)
-	publisherLabel := gtk.NewLabel("Developer: " + launcher.Metadata.Publisher)
+	publisherLabel := gtk.NewLabel("Publisher: " + launcher.Metadata.Publisher)
 	gameTypeLabel := gtk.NewLabel("Type: " + typeStrings[launcher.Metadata.Type])
 
 	// Description text view
