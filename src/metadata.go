@@ -21,8 +21,7 @@ type Metadata struct {
 
 var typeStrings map[string]string = map[string]string{
 	"windows": "Windows executable",
-	"bin":     "Linux script",
-	"script":  "Linux script",
+	"linux":   "Linux application",
 	"gba":     "Gameboy Advance ROM",
 }
 

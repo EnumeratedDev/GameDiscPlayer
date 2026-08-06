@@ -210,7 +210,9 @@ func createLauncherWindow() {
 		}
 	}
 
-	if launcher.SelectedRunner == nil {
+	if launcher.Metadata.Type == "linux" {
+		runnerDropdown.SetVisible(false)
+	} else if launcher.SelectedRunner == nil {
 		playButton.SetSensitive(false)
 		installButton.SetSensitive(false)
 	}
@@ -223,9 +225,8 @@ func createLauncherWindow() {
 	metadataBox.Append(labelBox)
 	metadataBox.Append(scrolledWindow)
 	mainBox.Append(metadataBox)
-	if launcher.Metadata.Type != "bin" || launcher.Metadata.Type != "script" {
-		mainBox.Append(runnerDropdown)
-	}
+	mainBox.Append(runnerDropdown)
+
 	mainBox.Append(playButton)
 	mainBox.Append(installButton)
 	mainBox.Append(uninstallButton)
@@ -296,11 +297,11 @@ func Play() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case "bin", "script":
+	case "linux":
 		// Run Linux binary/script
 
 		// Run game
-		cmd := exec.Command(launcher.Metadata.Run)
+		cmd := exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
 		cmd.Dir = filepath.Join(launcher.DataDir, "files")
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
@@ -432,11 +433,11 @@ func PlayFromDisc() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case "bin", "script":
+	case "linux":
 		// Run Linux binary/script
 
 		// Run game
-		cmd := exec.Command(launcher.Metadata.Run)
+		cmd := exec.Command(filepath.Join(workDir, "files", launcher.Metadata.Run))
 		cmd.Dir = filepath.Join(workDir, "files")
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
