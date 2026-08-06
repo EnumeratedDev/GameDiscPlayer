@@ -81,6 +81,9 @@ func main() {
 }
 
 func activate() {
+	// Set launcher icon
+	gtk.WindowSetDefaultIconName("GameDiscPlayer")
+
 	createLauncherWindow()
 	createProgressWindow()
 
