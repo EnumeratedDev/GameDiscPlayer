@@ -130,7 +130,7 @@ func RemoveDirectoryRecursively(dir string) error {
 		}
 	}
 
-	launcher.ProgressWindow.Set(len(paths))
+	launcher.ProgressWindow.Hide()
 
 	return nil
 }

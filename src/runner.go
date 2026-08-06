@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -112,18 +111,16 @@ func (runner *Runner) Download() error {
 		return nil
 	}
 
-	fmt.Printf("Downloading runner (%s)...\n", runner.DisplayName)
-
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// Create runner directory
 	err = os.MkdirAll(filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.Type), 0755)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	// Download runner tarball
@@ -139,6 +136,7 @@ func (runner *Runner) Download() error {
 	}
 	defer response.Body.Close()
 
+	fmt.Println("Downloading " + runner.DisplayName + "...")
 	launcher.ProgressWindow.ResetProgressWindow64("Downloading "+runner.DisplayName+"...", 0, response.ContentLength)
 
 	_, err = io.Copy(io.MultiWriter(f, &launcher.ProgressWindow), response.Body)
@@ -162,7 +160,10 @@ func (runner *Runner) Download() error {
 
 	runner.Path = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.Type, runner.DisplayName)
 
+	// Remove tarball
 	os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Path)))
+
+	launcher.ProgressWindow.Hide()
 
 	return nil
 }

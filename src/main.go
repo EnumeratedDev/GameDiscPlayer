@@ -241,18 +241,31 @@ func Play() {
 		launcher.MainWindow.SetVisible(true)
 	})
 
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	switch launcher.Metadata.Type {
 	case "windows":
+		// Check for umu
+		umuPath, err := exec.LookPath("umu-run")
+		if err != nil {
+			umuPath = filepath.Join(homeDir, ".local/bin/umu-run")
+			_, err = os.Stat(umuPath)
+			if err != nil {
+				err = DownloadUmu()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+
 		prefixDir := filepath.Join(launcher.DataDir, "prefix")
 
 		// Download runner if required
 		launcher.SelectedRunner.Download()
-
-		// Check for umu
-		umuPath, err := exec.LookPath("umu-run")
-		if err != nil {
-			log.Fatalf("umu-run not found in PATH")
-		}
 
 		// Set game options
 		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
@@ -305,7 +318,7 @@ func Play() {
 		}
 	}
 
-	err := launcher.SaveOptions()
+	err = launcher.SaveOptions()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -332,6 +345,12 @@ func PlayFromDisc() {
 		log.Fatal(err)
 	}
 
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Create game data directory
 	err = os.MkdirAll(launcher.DataDir, 0755)
 	if err != nil {
@@ -348,7 +367,14 @@ func PlayFromDisc() {
 		// Check for umu
 		umuPath, err := exec.LookPath("umu-run")
 		if err != nil {
-			log.Fatalf("umu-run not found in PATH")
+			umuPath = filepath.Join(homeDir, ".local/bin/umu-run")
+			_, err = os.Stat(umuPath)
+			if err != nil {
+				err = DownloadUmu()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
 		}
 
 		// Set game options
@@ -377,6 +403,8 @@ func PlayFromDisc() {
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			launcher.ProgressWindow.Hide()
 		}
 
 		// Run game
@@ -506,6 +534,19 @@ Categories=Game;
 			log.Fatal(err)
 		}
 
+		// Check for umu
+		umuPath, err := exec.LookPath("umu-run")
+		if err != nil {
+			umuPath = filepath.Join(homeDir, ".local/bin/umu-run")
+			_, err = os.Stat(umuPath)
+			if err != nil {
+				err = DownloadUmu()
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
+		}
+
 		// Download runner if required
 		launcher.SelectedRunner.Download()
 
@@ -516,7 +557,7 @@ Categories=Game;
 			launcher.ProgressWindow.ResetProgressWindow64("Setting up prefix...", 0, 1)
 
 			// Setup command
-			cmd := exec.Command("umu-run", "winetricks")
+			cmd := exec.Command(umuPath, "winetricks")
 			cmd.Args = append(cmd.Args, launcher.Metadata.WinetricksVerbs...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
@@ -531,10 +572,10 @@ Categories=Game;
 			if err != nil {
 				log.Fatal(err)
 			}
+
+			launcher.ProgressWindow.Hide()
 		}
 	}
-
-	launcher.ProgressWindow.Hide()
 
 	// Restart launcher
 	exe, err := os.Executable()
@@ -560,8 +601,6 @@ func UninstallGame() {
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
 	}
-
-	launcher.ProgressWindow.Hide()
 
 	if isLauncherInstalled {
 		// Exit launcher
