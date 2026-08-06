@@ -31,6 +31,27 @@ type Launcher struct {
 var launcher = Launcher{Options: Options{}}
 
 func main() {
+	if appimage, ok := os.LookupEnv("APPIMAGE"); ok {
+		// Change working directory to appimage file's location
+		err := os.Chdir(filepath.Dir(appimage))
+		if err != nil {
+			log.Fatal(err)
+		}
+		// Fix python environment
+		os.Unsetenv("PYTHONHOME")
+		os.Unsetenv("PYTHONPATH")
+	} else {
+		// Change working directory to binary's location
+		exe, err := os.Executable()
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = os.Chdir(filepath.Dir(exe))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
