@@ -164,7 +164,7 @@ func createLauncherWindow() {
 					selectedRunnerIndex = i
 				}
 
-				if strings.HasPrefix(runner.Path, "https://") || strings.HasPrefix(runner.Path, "http://") {
+				if strings.HasPrefix(runner.Run, "https://") || strings.HasPrefix(runner.Run, "http://") {
 					options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
 				} else {
 					options = append(options, runner.DisplayName)
@@ -295,7 +295,7 @@ func Play() {
 		// Setup environment
 		cmd.Env = cmd.Environ()
 		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Path)
+		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
 		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 		err = cmd.Start()
@@ -341,8 +341,9 @@ func Play() {
 		launcher.SaveOptions()
 
 		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Path)
-		if launcher.SelectedRunner.Type == "mgba" {
+		cmd := exec.Command(launcher.SelectedRunner.Run)
+		switch launcher.SelectedRunner.Type {
+		case "mgba":
 			// Create saves directory
 			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
 			if err != nil {
@@ -470,7 +471,7 @@ func PlayFromDisc() {
 
 			// Setup environment
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Path)
+			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
 			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 			err = cmd.Run()
@@ -491,7 +492,7 @@ func PlayFromDisc() {
 		// Setup environment
 		cmd.Env = cmd.Environ()
 		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Path)
+		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
 		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 		err = cmd.Start()
@@ -537,7 +538,8 @@ func PlayFromDisc() {
 		launcher.SaveOptions()
 
 		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Path)
+		runCmd := strings.Split(launcher.SelectedRunner.Run, " ")
+		cmd := exec.Command(runCmd[0], runCmd[1:]...)
 		if strings.HasPrefix(launcher.SelectedRunner.DisplayName, "mGBA") {
 			// Create saves directory
 			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
@@ -699,7 +701,7 @@ Categories=Game;
 
 			// Setup environment
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Path)
+			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
 			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 			err = cmd.Run()

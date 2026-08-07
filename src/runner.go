@@ -21,7 +21,7 @@ type Runner struct {
 	DisplayName string
 	Type        string
 	System      string
-	Path        string
+	Run         string
 }
 
 func GetWindowsRunners() (runners []Runner, err error) {
@@ -48,7 +48,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 			for _, line := range lines {
 				if i := strings.Index(line, "\"display_name\""); i != -1 {
 					displayName := strings.Trim(line[i+14:], " \n\"")
-					runners = append(runners, Runner{DisplayName: displayName, Type: "proton", System: "windows", Path: entryPath})
+					runners = append(runners, Runner{DisplayName: displayName, Type: "proton", System: "windows", Run: entryPath})
 				}
 			}
 		}
@@ -101,7 +101,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 		if !slices.ContainsFunc(runners, func(runner Runner) bool {
 			return runner.DisplayName == release.TagName
 		}) {
-			runners = append(runners, Runner{DisplayName: release.TagName, Type: "proton", System: "windows", Path: release.Assets[assetId].BrowserDownloadUrl})
+			runners = append(runners, Runner{DisplayName: release.TagName, Type: "proton", System: "windows", Run: release.Assets[assetId].BrowserDownloadUrl})
 		}
 	}
 
@@ -119,19 +119,36 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 
 	// Get local runners
 	if mgbaPath, err := exec.LookPath("mgba-qt"); err == nil {
-		runners = append(runners, Runner{
-			DisplayName: "mGBA (System)",
-			Type:        "mgba",
-			System:      "gba",
-			Path:        mgbaPath,
-		})
+		output, err := exec.Command(mgbaPath, "--version").Output()
+		if err == nil {
+			runners = append(runners, Runner{
+				DisplayName: "mGBA " + strings.Split(string(output), " ")[1] + " (System)",
+				Type:        "mgba",
+				System:      "gba",
+				Run:         mgbaPath,
+			})
+		}
 	} else if mgbaPath, err := exec.LookPath("mgba"); err == nil {
-		runners = append(runners, Runner{
-			DisplayName: "mGBA (System)",
-			Type:        "mgba",
-			System:      "gba",
-			Path:        mgbaPath,
-		})
+		output, err := exec.Command(mgbaPath, "--version").Output()
+		if err == nil {
+			runners = append(runners, Runner{
+				DisplayName: "mGBA " + strings.Split(string(output), " ")[1] + " (System)",
+				Type:        "mgba",
+				System:      "gba",
+				Run:         mgbaPath,
+			})
+		}
+	}
+	if err = exec.Command("flatpak", "info", "io.mgba.mGBA").Run(); err == nil {
+		output, err := exec.Command("flatpak", "run", "io.mgba.mGBA", "--version").Output()
+		if err == nil {
+			runners = append(runners, Runner{
+				DisplayName: "mGBA " + strings.Split(string(output), " ")[1] + " (Flatpak)",
+				Type:        "mgba",
+				System:      "gba",
+				Run:         "flatpak run io.mgba.mGBA",
+			})
+		}
 	}
 
 	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/gba"))
@@ -148,7 +165,7 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				if err != nil {
 					continue
 				}
-				runners = append(runners, Runner{DisplayName: "mGBA " + strings.Split(string(output), " ")[1], Type: "mgba", System: "gba", Path: entryPath})
+				runners = append(runners, Runner{DisplayName: "mGBA " + strings.Split(string(output), " ")[1], Type: "mgba", System: "gba", Run: entryPath})
 			}
 		}
 	} else {
@@ -202,7 +219,7 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 		if !slices.ContainsFunc(runners, func(runner Runner) bool {
 			return runner.DisplayName == "mGBA "+release.TagName
 		}) {
-			runners = append(runners, Runner{DisplayName: "mGBA " + release.TagName, Type: "mgba", System: "gba", Path: release.Assets[assetId].BrowserDownloadUrl})
+			runners = append(runners, Runner{DisplayName: "mGBA " + release.TagName, Type: "mgba", System: "gba", Run: release.Assets[assetId].BrowserDownloadUrl})
 		}
 	}
 
@@ -210,7 +227,7 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 }
 
 func (runner *Runner) Download() error {
-	if !strings.HasPrefix(runner.Path, "https://") && !strings.HasPrefix(runner.Path, "http://") {
+	if !strings.HasPrefix(runner.Run, "https://") && !strings.HasPrefix(runner.Run, "http://") {
 		return nil
 	}
 
@@ -227,13 +244,13 @@ func (runner *Runner) Download() error {
 	}
 
 	// Download runner
-	f, err := os.Create(filepath.Join(homeDir, ".cache", path.Base(runner.Path)))
+	f, err := os.Create(filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 
-	response, err := http.Get(runner.Path)
+	response, err := http.Get(runner.Run)
 	if err != nil {
 		return err
 	}
@@ -250,14 +267,14 @@ func (runner *Runner) Download() error {
 	// Ensure file is closed
 	f.Close()
 
-	if strings.HasSuffix(runner.Path, ".tar") ||
-		strings.HasSuffix(runner.Path, ".tar.gz") ||
-		strings.HasSuffix(runner.Path, ".tar.xz") ||
-		strings.HasSuffix(runner.Path, ".tar.zst") {
+	if strings.HasSuffix(runner.Run, ".tar") ||
+		strings.HasSuffix(runner.Run, ".tar.gz") ||
+		strings.HasSuffix(runner.Run, ".tar.xz") ||
+		strings.HasSuffix(runner.Run, ".tar.zst") {
 		launcher.ProgressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
 
 		// Setup extract command
-		cmd := exec.Command("tar", "xf", filepath.Join(homeDir, ".cache", path.Base(runner.Path)))
+		cmd := exec.Command("tar", "xf", filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
 		cmd.Stdin = response.Body
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -268,15 +285,15 @@ func (runner *Runner) Download() error {
 			return err
 		}
 
-		runner.Path = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
+		runner.Run = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
 
 		// Remove downloaded tarball
-		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Path)))
-	} else if strings.HasSuffix(runner.Path, ".appimage") || strings.HasSuffix(runner.Path, ".AppImage") {
+		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
+	} else if strings.HasSuffix(runner.Run, ".appimage") || strings.HasSuffix(runner.Run, ".AppImage") {
 		launcher.ProgressWindow.SetStatus("Moving " + runner.DisplayName + "...")
 
-		src := filepath.Join(homeDir, ".cache", path.Base(runner.Path))
-		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, path.Base(runner.Path))
+		src := filepath.Join(homeDir, ".cache", path.Base(runner.Run))
+		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, path.Base(runner.Run))
 
 		// Change .AppImage to all lower-case to make appimage discovery simpler
 		dest = strings.ReplaceAll(dest, ".AppImage", ".appimage")
@@ -291,9 +308,9 @@ func (runner *Runner) Download() error {
 			return err
 		}
 
-		runner.Path = dest
+		runner.Run = dest
 
-		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Path)))
+		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
 	}
 
 	launcher.ProgressWindow.Hide()
