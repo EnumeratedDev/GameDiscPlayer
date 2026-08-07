@@ -20,6 +20,7 @@ const MGBA_VERSION_REQUEST_URL = "https://api.github.com/repos/mgba-emu/mgba/rel
 type Runner struct {
 	DisplayName string
 	Type        string
+	System      string
 	Path        string
 }
 
@@ -47,7 +48,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 			for _, line := range lines {
 				if i := strings.Index(line, "\"display_name\""); i != -1 {
 					displayName := strings.Trim(line[i+14:], " \n\"")
-					runners = append(runners, Runner{DisplayName: displayName, Type: "windows", Path: entryPath})
+					runners = append(runners, Runner{DisplayName: displayName, Type: "proton", System: "windows", Path: entryPath})
 				}
 			}
 		}
@@ -85,9 +86,9 @@ func GetWindowsRunners() (runners []Runner, err error) {
 
 	for _, release := range githubReleases {
 		assetId := slices.IndexFunc(release.Assets, func(asset GithubAsset) bool {
-			if runtime.GOARCH == "amd64" || runtime.GOARCH == "386" {
+			if runtime.GOARCH == "386" || strings.HasPrefix(runtime.GOARCH, "amd64") {
 				return strings.HasSuffix(asset.Name, ".tar.gz") && !strings.HasSuffix(asset.Name, "aarch64.tar.gz")
-			} else if runtime.GOARCH == "arm" {
+			} else if strings.HasPrefix(runtime.GOARCH, "arm") {
 				return strings.HasSuffix(asset.Name, "aarch64.tar.gz")
 			}
 
@@ -100,7 +101,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 		if !slices.ContainsFunc(runners, func(runner Runner) bool {
 			return runner.DisplayName == release.TagName
 		}) {
-			runners = append(runners, Runner{DisplayName: release.TagName, Type: "windows", Path: release.Assets[assetId].BrowserDownloadUrl})
+			runners = append(runners, Runner{DisplayName: release.TagName, Type: "proton", System: "windows", Path: release.Assets[assetId].BrowserDownloadUrl})
 		}
 	}
 
@@ -120,13 +121,15 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 	if mgbaPath, err := exec.LookPath("mgba-qt"); err == nil {
 		runners = append(runners, Runner{
 			DisplayName: "mGBA (System)",
-			Type:        "gba",
+			Type:        "mgba",
+			System:      "gba",
 			Path:        mgbaPath,
 		})
 	} else if mgbaPath, err := exec.LookPath("mgba"); err == nil {
 		runners = append(runners, Runner{
 			DisplayName: "mGBA (System)",
-			Type:        "gba",
+			Type:        "mgba",
+			System:      "gba",
 			Path:        mgbaPath,
 		})
 	}
@@ -145,7 +148,7 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				if err != nil {
 					continue
 				}
-				runners = append(runners, Runner{DisplayName: "mGBA " + strings.Split(string(output), " ")[1], Type: "gba", Path: entryPath})
+				runners = append(runners, Runner{DisplayName: "mGBA " + strings.Split(string(output), " ")[1], Type: "mgba", System: "gba", Path: entryPath})
 			}
 		}
 	} else {
@@ -166,8 +169,13 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 
 	decoder := json.NewDecoder(response.Body)
 
+	type GithubAsset struct {
+		Name               string `json:"name"`
+		BrowserDownloadUrl string `json:"browser_download_url"`
+	}
 	type GithubRelease struct {
-		TagName string `json:"tag_name"`
+		TagName string        `json:"tag_name"`
+		Assets  []GithubAsset `json:"assets"`
 	}
 
 	var githubReleases []GithubRelease
@@ -178,18 +186,23 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 	}
 
 	for _, release := range githubReleases {
-		downloadURL := "https://github.com/mgba-emu/mgba/releases/download/$VERSION/mGBA-$VERSION-appimage-$ARCH.appimage"
-		downloadURL = strings.ReplaceAll(downloadURL, "$VERSION", release.TagName)
-		if runtime.GOARCH == "386" || strings.HasPrefix(runtime.GOARCH, "amd64") {
-			downloadURL = strings.ReplaceAll(downloadURL, "$ARCH", "x64")
-		} else if strings.HasPrefix(runtime.GOARCH, "arm") {
-			downloadURL = strings.ReplaceAll(downloadURL, "$ARCH", "arm64")
+		assetId := slices.IndexFunc(release.Assets, func(asset GithubAsset) bool {
+			if runtime.GOARCH == "386" || strings.HasPrefix(runtime.GOARCH, "amd64") {
+				return strings.HasSuffix(asset.Name, "-x64.appimage")
+			} else if strings.HasPrefix(runtime.GOARCH, "arm") {
+				return strings.HasSuffix(asset.Name, "-arm64.appimage ")
+			}
+
+			return false
+		})
+		if assetId == -1 {
+			continue
 		}
 
 		if !slices.ContainsFunc(runners, func(runner Runner) bool {
 			return runner.DisplayName == "mGBA "+release.TagName
 		}) {
-			runners = append(runners, Runner{DisplayName: "mGBA " + release.TagName, Type: "gba", Path: downloadURL})
+			runners = append(runners, Runner{DisplayName: "mGBA " + release.TagName, Type: "mgba", System: "gba", Path: release.Assets[assetId].BrowserDownloadUrl})
 		}
 	}
 
@@ -208,7 +221,7 @@ func (runner *Runner) Download() error {
 	}
 
 	// Create runner directory
-	err = os.MkdirAll(filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.Type), 0755)
+	err = os.MkdirAll(filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System), 0755)
 	if err != nil {
 		return err
 	}
@@ -248,14 +261,14 @@ func (runner *Runner) Download() error {
 		cmd.Stdin = response.Body
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Dir = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.Type)
+		cmd.Dir = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System)
 
 		err = cmd.Run()
 		if err != nil {
 			return err
 		}
 
-		runner.Path = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.Type, runner.DisplayName)
+		runner.Path = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
 
 		// Remove downloaded tarball
 		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Path)))
@@ -263,7 +276,11 @@ func (runner *Runner) Download() error {
 		launcher.ProgressWindow.SetStatus("Moving " + runner.DisplayName + "...")
 
 		src := filepath.Join(homeDir, ".cache", path.Base(runner.Path))
-		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.Type, path.Base(runner.Path))
+		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, path.Base(runner.Path))
+
+		// Change .AppImage to all lower-case to make appimage discovery simpler
+		dest = strings.ReplaceAll(dest, ".AppImage", ".appimage")
+
 		err = Copy(src, dest)
 		if err != nil {
 			return err

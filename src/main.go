@@ -342,7 +342,7 @@ func Play() {
 
 		// Run game
 		cmd := exec.Command(launcher.SelectedRunner.Path)
-		if strings.HasPrefix(launcher.SelectedRunner.DisplayName, "mGBA") {
+		if launcher.SelectedRunner.Type == "mgba" {
 			// Create saves directory
 			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
 			if err != nil {
