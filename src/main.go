@@ -72,7 +72,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	launcher.App = gtk.NewApplication("dev.enumerated.GameDiscPlayer", gio.ApplicationFlags(gio.ApplicationFlagsNone))
+	launcher.App = gtk.NewApplication("dev.enumerated.GameDiscPlayer", gio.ApplicationFlags(gio.ApplicationNonUnique))
 	launcher.App.ConnectActivate(activate)
 
 	if code := launcher.App.Run(os.Args); code > 0 {
