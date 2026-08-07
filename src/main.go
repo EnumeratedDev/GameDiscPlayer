@@ -72,7 +72,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	launcher.App = gtk.NewApplication("com.github.diamondburned.gotk4-examples.gtk4.simple", gio.ApplicationFlags(gio.ApplicationFlagsNone))
+	launcher.App = gtk.NewApplication("dev.enumerated.GameDiscPlayer", gio.ApplicationFlags(gio.ApplicationFlagsNone))
 	launcher.App.ConnectActivate(activate)
 
 	if code := launcher.App.Run(os.Args); code > 0 {
@@ -113,7 +113,7 @@ func createLauncherWindow() {
 	labelBox := gtk.NewBox(gtk.Orientation(gtk.OrientationVertical), 10)
 	// Game icon
 	gameIcon := gtk.NewPictureForFilename("icon.png")
-	gameIcon.SetSizeRequest(64, 64)
+	gameIcon.SetSizeRequest(256, 256)
 	gameIcon.SetHExpand(false)
 	gameIcon.SetVExpand(false)
 	// Labels
@@ -138,37 +138,47 @@ func createLauncherWindow() {
 	// Runner dropdown
 	runnerDropdown := gtk.NewDropDownFromStrings(nil)
 	setRunnerDropdownOptions := func() {
+		var err error
+		var runners []Runner
 		switch launcher.Metadata.Type {
 		case "windows":
-			runners, err := GetWindowsRunners()
+			runners, err = GetWindowsRunners()
 			if err != nil || len(runners) == 0 {
 				runnerDropdown.SetSensitive(false)
 				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
-			} else {
-				options := make([]string, 0)
-				selectedRunnerIndex := 0
-
-				for i, runner := range runners {
-					if runner.DisplayName == launcher.Options.Runner {
-						selectedRunnerIndex = i
-					}
-
-					if strings.HasPrefix(runner.Path, "https://") || strings.HasPrefix(runner.Path, "http://") {
-						options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
-					} else {
-						options = append(options, runner.DisplayName)
-					}
-				}
-				runnerDropdown.SetModel(gtk.NewStringList(options))
-
-				runnerDropdown.SetSelected(uint(selectedRunnerIndex))
-				launcher.SelectedRunner = &runners[selectedRunnerIndex]
-
-				runnerDropdown.Connect("notify::selected", func() {
-					launcher.SelectedRunner = &runners[runnerDropdown.Selected()]
-					launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-				})
 			}
+		case "gba":
+			runners, err = GetGameboyAdvanceRunners()
+			fmt.Println(len(runners), err)
+			if err != nil || len(runners) == 0 {
+				runnerDropdown.SetSensitive(false)
+				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
+			}
+		}
+		if len(runners) > 0 {
+			options := make([]string, 0)
+			selectedRunnerIndex := 0
+
+			for i, runner := range runners {
+				if runner.DisplayName == launcher.Options.Runner {
+					selectedRunnerIndex = i
+				}
+
+				if strings.HasPrefix(runner.Path, "https://") || strings.HasPrefix(runner.Path, "http://") {
+					options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
+				} else {
+					options = append(options, runner.DisplayName)
+				}
+			}
+			runnerDropdown.SetModel(gtk.NewStringList(options))
+
+			runnerDropdown.SetSelected(uint(selectedRunnerIndex))
+			launcher.SelectedRunner = &runners[selectedRunnerIndex]
+
+			runnerDropdown.Connect("notify::selected", func() {
+				launcher.SelectedRunner = &runners[runnerDropdown.Selected()]
+				launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+			})
 		}
 	}
 	setRunnerDropdownOptions()
@@ -302,6 +312,66 @@ func Play() {
 
 		// Run game
 		cmd := exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+		cmd.Dir = filepath.Join(launcher.DataDir, "files")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		launcher.GameProcess = cmd.Process
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "gba":
+		// Run Gameboy Advance ROM
+
+		// Download runner if required
+		launcher.SelectedRunner.Download()
+
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+		launcher.SaveOptions()
+
+		// Run game
+		cmd := exec.Command(launcher.SelectedRunner.Path)
+		if strings.HasPrefix(launcher.SelectedRunner.DisplayName, "mGBA") {
+			// Create saves directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Create cheats directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "cheats"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Create screenshots directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "screenshots"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Create patches directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "patches"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			cmd.Args = append(cmd.Args, "--fullscreen",
+				"-CsavegamePath"+filepath.Join(launcher.DataDir, "saves"),
+				"-CsavestatePath"+filepath.Join(launcher.DataDir, "saves"),
+				"-CcheatsPath"+filepath.Join(launcher.DataDir, "cheats"),
+				"-CscreenshotPath"+filepath.Join(launcher.DataDir, "screenshots"),
+				"-CpatchPath"+filepath.Join(launcher.DataDir, "patches"),
+				launcher.Metadata.Run)
+		}
 		cmd.Dir = filepath.Join(launcher.DataDir, "files")
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
@@ -456,6 +526,66 @@ func PlayFromDisc() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case "gba":
+		// Run Gameboy Advance ROM
+
+		// Download runner if required
+		launcher.SelectedRunner.Download()
+
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+		launcher.SaveOptions()
+
+		// Run game
+		cmd := exec.Command(launcher.SelectedRunner.Path)
+		if strings.HasPrefix(launcher.SelectedRunner.DisplayName, "mGBA") {
+			// Create saves directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Create cheats directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "cheats"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Create screenshots directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "screenshots"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// Create patches directory
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "patches"), 0755)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			cmd.Args = append(cmd.Args, "--fullscreen",
+				"-CsavegamePath="+filepath.Join(launcher.DataDir, "saves"),
+				"-CsavestatePath="+filepath.Join(launcher.DataDir, "saves"),
+				"-CcheatsPath="+filepath.Join(launcher.DataDir, "cheats"),
+				"-CscreenshotPath="+filepath.Join(launcher.DataDir, "screenshots"),
+				"-CpatchPath="+filepath.Join(launcher.DataDir, "patches"),
+				launcher.Metadata.Run)
+		}
+		cmd.Dir = filepath.Join(workDir, "files")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		launcher.GameProcess = cmd.Process
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
@@ -499,17 +629,18 @@ func InstallGame() {
 	launcher.Options.Runner = launcher.SelectedRunner.DisplayName
 	launcher.SaveOptions()
 
-	// Create .installed file
-	f, err := os.Create(filepath.Join(launcher.DataDir, ".installed"))
+	// Copy launcher into game files
+	exe, err := os.Executable()
 	if err != nil {
 		log.Fatal(err)
 	}
-	f.Close()
+	err = Copy(exe, filepath.Join(launcher.DataDir, "launcher"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	switch launcher.Metadata.Type {
-	case "windows":
-		// Create .desktop file
-		toWrite := fmt.Sprintf(`[Desktop Entry]
+	// Create .desktop file
+	toWrite := fmt.Sprintf(`[Desktop Entry]
 Name=%s
 Comment=Play using GameDiscPlayer
 Exec="%s/launcher"
@@ -519,25 +650,24 @@ Terminal=false
 Type=Application
 Categories=Game;
 `, launcher.Metadata.Name, launcher.DataDir, launcher.DataDir, launcher.DataDir)
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/applications/games"), 0755)
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = os.WriteFile(filepath.Join(homeDir, ".local/share/applications/games", launcher.Metadata.Name+".desktop"), []byte(toWrite), 0755)
-		if err != nil {
-			log.Fatal(err)
-		}
+	err = os.MkdirAll(filepath.Join(homeDir, ".local/share/applications/games"), 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.WriteFile(filepath.Join(homeDir, ".local/share/applications/games", launcher.Metadata.Name+".desktop"), []byte(toWrite), 0755)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		// Copy launcher into game files
-		exe, err := os.Executable()
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = Copy(exe, filepath.Join(launcher.DataDir, "launcher"))
-		if err != nil {
-			log.Fatal(err)
-		}
+	// Create .installed file
+	f, err := os.Create(filepath.Join(launcher.DataDir, ".installed"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	f.Close()
 
+	switch launcher.Metadata.Type {
+	case "windows":
 		// Check for umu
 		umuPath, err := exec.LookPath("umu-run")
 		if err != nil {
@@ -582,10 +712,6 @@ Categories=Game;
 	}
 
 	// Restart launcher
-	exe, err := os.Executable()
-	if err != nil {
-		log.Fatal(err)
-	}
 	syscall.Exec(exe, nil, os.Environ())
 }
 
