@@ -44,7 +44,7 @@ func (launcher *Launcher) SaveOptions() (err error) {
 		return fmt.Errorf("game not installed")
 	}
 
-	f, err := os.OpenFile(filepath.Join(launcher.DataDir, "options.yml"), os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filepath.Join(launcher.DataDir, "options.yml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return
 	}
