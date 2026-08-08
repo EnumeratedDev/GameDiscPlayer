@@ -147,7 +147,7 @@ func createLauncherWindow() {
 				runnerDropdown.SetSensitive(false)
 				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
 			}
-		case "gba":
+		case "gb", "gbc", "gba":
 			runners, err = GetGameboyAdvanceRunners()
 			fmt.Println(len(runners), err)
 			if err != nil || len(runners) == 0 {
@@ -330,7 +330,7 @@ func Play() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case "gba":
+	case "gb", "gbc", "gba":
 		// Run Gameboy Advance ROM
 
 		// Download runner if required
@@ -527,7 +527,7 @@ func PlayFromDisc() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case "gba":
+	case "gb", "gbc", "gba":
 		// Run Gameboy Advance ROM
 
 		// Download runner if required

@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
+	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
@@ -133,4 +135,36 @@ func RemoveDirectoryRecursively(dir string) error {
 	launcher.ProgressWindow.Hide()
 
 	return nil
+}
+
+type GithubAsset struct {
+	Name               string `json:"name"`
+	BrowserDownloadUrl string `json:"browser_download_url"`
+}
+
+type GithubRelease struct {
+	TagName string        `json:"tag_name"`
+	Assets  []GithubAsset `json:"assets"`
+}
+
+func GetGithubReleases(url string) (githubReleases []GithubRelease, err error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return
+	}
+
+	response, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	decoder := json.NewDecoder(response.Body)
+
+	err = decoder.Decode(&githubReleases)
+	if err != nil {
+		return
+	}
+
+	return
 }

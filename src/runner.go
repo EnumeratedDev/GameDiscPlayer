@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -55,33 +54,9 @@ func GetWindowsRunners() (runners []Runner, err error) {
 	}
 
 	// Get downloadable runners
-	req, err := http.NewRequest("GET", PROTON_GE_VERSION_REQUEST_URL, nil)
-	if err != nil {
-		return
-	}
-
-	response, err := http.DefaultClient.Do(req)
+	githubReleases, err := GetGithubReleases(PROTON_GE_VERSION_REQUEST_URL)
 	if err != nil {
 		return runners, nil
-	}
-	defer response.Body.Close()
-
-	decoder := json.NewDecoder(response.Body)
-
-	type GithubAsset struct {
-		Name               string `json:"name"`
-		BrowserDownloadUrl string `json:"browser_download_url"`
-	}
-	type GithubRelease struct {
-		TagName string        `json:"tag_name"`
-		Assets  []GithubAsset `json:"assets"`
-	}
-
-	var githubReleases []GithubRelease
-
-	err = decoder.Decode(&githubReleases)
-	if err != nil {
-		return
 	}
 
 	for _, release := range githubReleases {
@@ -160,7 +135,7 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 			entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/gba", entry.Name())
 
 			// Check for mgba runners
-			if strings.HasPrefix(entry.Name(), "mGBA-") && strings.HasSuffix(entry.Name(), ".appimage") {
+			if strings.HasPrefix(entry.Name(), "mGBA-") && strings.HasSuffix(entry.Name(), ".AppImage") {
 				output, err := exec.Command(entryPath, "--version").Output()
 				if err != nil {
 					continue
@@ -173,33 +148,9 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 	}
 
 	// Get downloadable runners
-	req, err := http.NewRequest("GET", MGBA_VERSION_REQUEST_URL, nil)
-	if err != nil {
-		return
-	}
-
-	response, err := http.DefaultClient.Do(req)
+	githubReleases, err := GetGithubReleases(MGBA_VERSION_REQUEST_URL)
 	if err != nil {
 		return runners, nil
-	}
-	defer response.Body.Close()
-
-	decoder := json.NewDecoder(response.Body)
-
-	type GithubAsset struct {
-		Name               string `json:"name"`
-		BrowserDownloadUrl string `json:"browser_download_url"`
-	}
-	type GithubRelease struct {
-		TagName string        `json:"tag_name"`
-		Assets  []GithubAsset `json:"assets"`
-	}
-
-	var githubReleases []GithubRelease
-
-	err = decoder.Decode(&githubReleases)
-	if err != nil {
-		return
 	}
 
 	for _, release := range githubReleases {
@@ -243,12 +194,17 @@ func (runner *Runner) Download() error {
 		return err
 	}
 
+	downloadedFilepath := filepath.Join(homeDir, ".cache", path.Base(runner.Run))
+
 	// Download runner
-	f, err := os.Create(filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
+	f, err := os.Create(downloadedFilepath)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
+	// Remove downloaded tarball before exiting
+	defer os.Remove(downloadedFilepath)
 
 	response, err := http.Get(runner.Run)
 	if err != nil {
@@ -267,14 +223,14 @@ func (runner *Runner) Download() error {
 	// Ensure file is closed
 	f.Close()
 
-	if strings.HasSuffix(runner.Run, ".tar") ||
-		strings.HasSuffix(runner.Run, ".tar.gz") ||
-		strings.HasSuffix(runner.Run, ".tar.xz") ||
-		strings.HasSuffix(runner.Run, ".tar.zst") {
+	if strings.HasSuffix(downloadedFilepath, ".tar") ||
+		strings.HasSuffix(downloadedFilepath, ".tar.gz") ||
+		strings.HasSuffix(downloadedFilepath, ".tar.xz") ||
+		strings.HasSuffix(downloadedFilepath, ".tar.zst") {
 		launcher.ProgressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
 
 		// Setup extract command
-		cmd := exec.Command("tar", "xf", filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
+		cmd := exec.Command("tar", "xf", downloadedFilepath)
 		cmd.Stdin = response.Body
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -286,17 +242,19 @@ func (runner *Runner) Download() error {
 		}
 
 		runner.Run = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
-
-		// Remove downloaded tarball
-		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
-	} else if strings.HasSuffix(runner.Run, ".appimage") || strings.HasSuffix(runner.Run, ".AppImage") {
+	} else if strings.HasSuffix(strings.ToLower(downloadedFilepath), ".appimage") {
 		launcher.ProgressWindow.SetStatus("Moving " + runner.DisplayName + "...")
 
-		src := filepath.Join(homeDir, ".cache", path.Base(runner.Run))
-		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, path.Base(runner.Run))
+		src := downloadedFilepath
+		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, filepath.Base(downloadedFilepath))
 
-		// Change .AppImage to all lower-case to make appimage discovery simpler
-		dest = strings.ReplaceAll(dest, ".AppImage", ".appimage")
+		// Change extension capitalization to make AppImage discovery simpler
+		var found bool
+		if dest, found = strings.CutSuffix(dest, ".Appimage"); found {
+			dest += ".AppImage"
+		} else if dest, found = strings.CutSuffix(dest, ".appimage"); found {
+			dest += ".AppImage"
+		}
 
 		err = Copy(src, dest)
 		if err != nil {
@@ -309,8 +267,6 @@ func (runner *Runner) Download() error {
 		}
 
 		runner.Run = dest
-
-		os.Remove(filepath.Join(homeDir, ".cache", path.Base(runner.Run)))
 	}
 
 	launcher.ProgressWindow.Hide()
