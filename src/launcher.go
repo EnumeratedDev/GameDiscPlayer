@@ -475,6 +475,7 @@ Categories=Game;
 		// Setup prefix
 		if _, err := os.Stat(prefixDir); err != nil && len(launcher.Metadata.WinetricksVerbs) > 0 {
 			progressWindow := NewProgressWindow("Setting up prefix...", 0, 1)
+			progressWindow.Pulse()
 
 			// Setup command
 			cmd := exec.Command(umuPath, "winetricks")

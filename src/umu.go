@@ -77,6 +77,7 @@ func DownloadUmu() (err error) {
 	}
 
 	progressWindow.SetStatus("Extracting umu-launcher " + githubRelease.TagName + "...")
+	progressWindow.Pulse()
 
 	// Setup extract command
 	cmd := exec.Command("tar", "xf", filepath.Join(homeDir, ".cache", path.Base(umuLauncherDownloadURL)), "--strip-components=1", "umu/umu-run")

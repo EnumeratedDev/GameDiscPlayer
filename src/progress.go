@@ -6,8 +6,11 @@ import (
 )
 
 type ProgressWindow struct {
-	value       int64
-	total       int64
+	value int64
+	total int64
+
+	timeoutHandle glib.SourceHandle
+
 	window      *gtk.ApplicationWindow
 	statusLabel *gtk.Label
 	progressBar *gtk.ProgressBar
@@ -67,27 +70,6 @@ func (window *ProgressWindow) Reset64(status string, progress, total int64) {
 	window.SetTotal64(total)
 }
 
-func (window *ProgressWindow) IsClosed() bool {
-	return window.window == nil
-}
-
-func (window *ProgressWindow) Close() {
-	glib.IdleAdd(func() {
-		window.window.Close()
-		window.window = nil
-	})
-}
-
-func (window *ProgressWindow) Pulse() {
-	if window.IsClosed() {
-		return
-	}
-
-	glib.IdleAdd(func() {
-		window.progressBar.Pulse()
-	})
-}
-
 func (window *ProgressWindow) SetStatus(status string) {
 	if window.IsClosed() {
 		return
@@ -143,4 +125,36 @@ func (window *ProgressWindow) Write(p []byte) (int, error) {
 	window.Add(len(p))
 
 	return len(p), nil
+}
+
+func (window *ProgressWindow) Pulse() {
+	if window.IsClosed() {
+		return
+	}
+	if window.timeoutHandle != 0 {
+		return
+	}
+
+	window.progressBar.SetPulseStep(0.05)
+
+	window.timeoutHandle = glib.TimeoutAdd(50, func() bool {
+		window.progressBar.Pulse()
+
+		return true
+	})
+}
+
+func (window *ProgressWindow) IsClosed() bool {
+	return window.window == nil
+}
+
+func (window *ProgressWindow) Close() {
+	glib.IdleAdd(func() {
+		if window.timeoutHandle != 0 {
+			glib.SourceRemove(window.timeoutHandle)
+		}
+
+		window.window.Close()
+		window.window = nil
+	})
 }

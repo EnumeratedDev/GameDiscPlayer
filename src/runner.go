@@ -229,6 +229,7 @@ func (runner *Runner) Download() error {
 		strings.HasSuffix(downloadedFilepath, ".tar.xz") ||
 		strings.HasSuffix(downloadedFilepath, ".tar.zst") {
 		progressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
+		progressWindow.Pulse()
 
 		// Setup extract command
 		cmd := exec.Command("tar", "xf", downloadedFilepath)
@@ -245,6 +246,7 @@ func (runner *Runner) Download() error {
 		runner.Run = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
 	} else if strings.HasSuffix(strings.ToLower(downloadedFilepath), ".appimage") {
 		progressWindow.SetStatus("Moving " + runner.DisplayName + "...")
+		progressWindow.Pulse()
 
 		src := downloadedFilepath
 		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, filepath.Base(downloadedFilepath))
