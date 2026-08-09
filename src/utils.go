@@ -76,7 +76,7 @@ func CopyRecursivelyWithProgress(source, dest string) error {
 		if stat.Mode().IsDir() {
 			fmt.Printf("Creating directory at %s...\n", filepath.Join(dest, relPath))
 			err = os.Mkdir(filepath.Join(dest, relPath), stat.Mode().Perm())
-			if err != nil {
+			if err != nil && !os.IsExist(err) {
 				return err
 			}
 		} else if stat.Mode().IsRegular() {
