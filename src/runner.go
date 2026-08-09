@@ -213,9 +213,10 @@ func (runner *Runner) Download() error {
 	defer response.Body.Close()
 
 	fmt.Println("Downloading " + runner.DisplayName + "...")
-	launcher.ProgressWindow.ResetProgressWindow64("Downloading "+runner.DisplayName+"...", 0, response.ContentLength)
+	progressWindow := NewProgressWindow64("Downloading "+runner.DisplayName+"...", 0, response.ContentLength)
+	defer progressWindow.Close()
 
-	_, err = io.Copy(io.MultiWriter(f, &launcher.ProgressWindow), response.Body)
+	_, err = io.Copy(io.MultiWriter(f, &progressWindow), response.Body)
 	if err != nil {
 		return err
 	}
@@ -227,7 +228,7 @@ func (runner *Runner) Download() error {
 		strings.HasSuffix(downloadedFilepath, ".tar.gz") ||
 		strings.HasSuffix(downloadedFilepath, ".tar.xz") ||
 		strings.HasSuffix(downloadedFilepath, ".tar.zst") {
-		launcher.ProgressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
+		progressWindow.SetStatus("Extracting " + runner.DisplayName + "...")
 
 		// Setup extract command
 		cmd := exec.Command("tar", "xf", downloadedFilepath)
@@ -243,7 +244,7 @@ func (runner *Runner) Download() error {
 
 		runner.Run = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
 	} else if strings.HasSuffix(strings.ToLower(downloadedFilepath), ".appimage") {
-		launcher.ProgressWindow.SetStatus("Moving " + runner.DisplayName + "...")
+		progressWindow.SetStatus("Moving " + runner.DisplayName + "...")
 
 		src := downloadedFilepath
 		dest := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, filepath.Base(downloadedFilepath))
@@ -268,8 +269,6 @@ func (runner *Runner) Download() error {
 
 		runner.Run = dest
 	}
-
-	launcher.ProgressWindow.Hide()
 
 	return nil
 }

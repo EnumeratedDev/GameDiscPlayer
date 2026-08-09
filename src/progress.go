@@ -13,68 +13,86 @@ type ProgressWindow struct {
 	progressBar *gtk.ProgressBar
 }
 
-func createProgressWindow() {
-	window := gtk.NewApplicationWindow(launcher.App)
-	window.SetTitle("...")
-	window.SetDefaultSize(300, -1)
-	window.SetResizable(false)
-	window.SetHideOnClose(true)
-	window.SetDeletable(false)
-
-	// Create vertical box
-	vbox := gtk.NewBox(gtk.Orientation(gtk.OrientationVertical), 10)
-	vbox.SetMarginTop(10)
-	vbox.SetMarginBottom(10)
-	vbox.SetMarginStart(10)
-	vbox.SetMarginEnd(10)
-	// Create progress label
-	statusLabel := gtk.NewLabel("...")
-	statusLabel.SetHAlign(gtk.Align(gtk.AlignCenter))
-	// Create progress bar
-	progressBar := gtk.NewProgressBar()
-
-	vbox.Append(statusLabel)
-	vbox.Append(progressBar)
-	window.SetChild(vbox)
-
-	launcher.ProgressWindow = ProgressWindow{
-		total:       0,
-		window:      window,
-		statusLabel: statusLabel,
-		progressBar: progressBar,
-	}
+func NewProgressWindow(status string, progress int, total int) ProgressWindow {
+	return NewProgressWindow64(status, int64(progress), int64(total))
 }
 
-func (window *ProgressWindow) ResetProgressWindow(status string, progress, total int) {
-	window.ResetProgressWindow64(status, int64(progress), int64(total))
+func NewProgressWindow64(status string, progress int64, total int64) ProgressWindow {
+	ch := make(chan ProgressWindow)
+	glib.IdleAdd(func() {
+		window := gtk.NewApplicationWindow(launcher.App)
+		window.SetTitle(status + "...")
+		window.SetDefaultSize(300, -1)
+		window.SetResizable(false)
+		window.SetHideOnClose(true)
+		window.SetDeletable(false)
+
+		// Create vertical box
+		vbox := gtk.NewBox(gtk.Orientation(gtk.OrientationVertical), 10)
+		vbox.SetMarginTop(10)
+		vbox.SetMarginBottom(10)
+		vbox.SetMarginStart(10)
+		vbox.SetMarginEnd(10)
+		// Create progress label
+		statusLabel := gtk.NewLabel(status + "...")
+		statusLabel.SetHAlign(gtk.Align(gtk.AlignCenter))
+		// Create progress bar
+		progressBar := gtk.NewProgressBar()
+
+		vbox.Append(statusLabel)
+		vbox.Append(progressBar)
+		window.SetChild(vbox)
+
+		window.SetVisible(true)
+
+		ch <- ProgressWindow{
+			value:       progress,
+			total:       total,
+			window:      window,
+			statusLabel: statusLabel,
+			progressBar: progressBar,
+		}
+	})
+
+	return <-ch
 }
 
-func (window *ProgressWindow) ResetProgressWindow64(status string, progress, total int64) {
+func (window *ProgressWindow) Reset(status string, progress, total int) {
+	window.Reset64(status, int64(progress), int64(total))
+}
+
+func (window *ProgressWindow) Reset64(status string, progress, total int64) {
 	window.SetStatus(status)
 	window.Set64(progress)
 	window.SetTotal64(total)
-	window.Show()
 }
 
-func (window *ProgressWindow) Show() {
-	glib.IdleAdd(func() {
-		window.window.SetVisible(true)
-	})
+func (window *ProgressWindow) IsClosed() bool {
+	return window.window == nil
 }
 
-func (window *ProgressWindow) Hide() {
+func (window *ProgressWindow) Close() {
 	glib.IdleAdd(func() {
-		window.window.SetVisible(false)
+		window.window.Close()
+		window.window = nil
 	})
 }
 
 func (window *ProgressWindow) Pulse() {
+	if window.IsClosed() {
+		return
+	}
+
 	glib.IdleAdd(func() {
 		window.progressBar.Pulse()
 	})
 }
 
 func (window *ProgressWindow) SetStatus(status string) {
+	if window.IsClosed() {
+		return
+	}
+
 	glib.IdleAdd(func() {
 		window.window.SetTitle(status)
 		window.statusLabel.SetText(status)
@@ -90,6 +108,10 @@ func (window *ProgressWindow) SetTotal(total int) {
 }
 
 func (window *ProgressWindow) Set64(progress int64) {
+	if window.IsClosed() {
+		return
+	}
+
 	window.value = min(progress, window.total)
 
 	glib.IdleAdd(func() {
@@ -102,6 +124,10 @@ func (window *ProgressWindow) Set(progress int) {
 }
 
 func (window *ProgressWindow) Add64(progress int64) {
+	if window.IsClosed() {
+		return
+	}
+
 	window.value = min(window.value+progress, window.total)
 
 	glib.IdleAdd(func() {

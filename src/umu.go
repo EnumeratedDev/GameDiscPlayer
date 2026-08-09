@@ -68,14 +68,15 @@ func DownloadUmu() (err error) {
 	defer response.Body.Close()
 
 	fmt.Println("Downloading umu-launcher " + githubRelease.TagName + "...")
-	launcher.ProgressWindow.ResetProgressWindow64("Downloading umu-launcher "+githubRelease.TagName+"...", 0, response.ContentLength)
+	progressWindow := NewProgressWindow64("Downloading umu-launcher "+githubRelease.TagName+"...", 0, response.ContentLength)
+	defer progressWindow.Close()
 
-	_, err = io.Copy(io.MultiWriter(f, &launcher.ProgressWindow), response.Body)
+	_, err = io.Copy(io.MultiWriter(f, &progressWindow), response.Body)
 	if err != nil {
 		return
 	}
 
-	launcher.ProgressWindow.SetStatus("Extracting umu-launcher " + githubRelease.TagName + "...")
+	progressWindow.SetStatus("Extracting umu-launcher " + githubRelease.TagName + "...")
 
 	// Setup extract command
 	cmd := exec.Command("tar", "xf", filepath.Join(homeDir, ".cache", path.Base(umuLauncherDownloadURL)), "--strip-components=1", "umu/umu-run")
@@ -91,8 +92,6 @@ func DownloadUmu() (err error) {
 
 	// Remove tarball
 	os.Remove(filepath.Join(homeDir, ".cache", path.Base(umuLauncherDownloadURL)))
-
-	launcher.ProgressWindow.Hide()
 
 	return
 }
