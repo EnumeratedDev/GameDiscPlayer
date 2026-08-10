@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"syscall"
 
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
@@ -29,339 +28,30 @@ type Launcher struct {
 var launcher = Launcher{Options: Options{}}
 
 func (launcher *Launcher) Play() {
-	// Hide and show main launcher window
+	// Hide main launcher window
 	glib.IdleAdd(func() {
 		launcher.MainWindow.SetSensitive(false)
 		launcher.MainWindow.SetVisible(false)
 	})
-	defer glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(true)
-		launcher.MainWindow.SetVisible(true)
-	})
 
-	// Get user home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	switch launcher.Metadata.System {
-	case "windows":
-		// Check for umu
-		umuPath, err := exec.LookPath("umu-run")
-		if err != nil {
-			umuPath = filepath.Join(homeDir, ".local/bin/umu-run")
-			_, err = os.Stat(umuPath)
-			if err != nil {
-				err = DownloadUmu()
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-		}
-
-		prefixDir := filepath.Join(launcher.DataDir, "prefix")
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		// Run game
-		cmd := exec.Command(umuPath, launcher.Metadata.Run)
-		cmd.Dir = filepath.Join(launcher.DataDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
-		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
-
-		err = cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "linux":
+	if launcher.Metadata.System == "linux" {
 		// Run Linux binary/script
 
-		// Run game
-		cmd := exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
-		cmd.Dir = filepath.Join(launcher.DataDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
+		// Get working directory
+		workDir, err := os.Getwd()
 		if err != nil {
 			log.Fatal(err)
 		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "gb", "gbc", "gba":
-		// Run Gameboy Advance ROM
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
 
 		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Run)
-		switch launcher.SelectedRunner.Type {
-		case "mgba":
-			// Create saves directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Create cheats directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "cheats"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Create screenshots directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "screenshots"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Create patches directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "patches"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			cmd.Args = append(cmd.Args, "--fullscreen",
-				"-CsavegamePath"+filepath.Join(launcher.DataDir, "saves"),
-				"-CsavestatePath"+filepath.Join(launcher.DataDir, "saves"),
-				"-CcheatsPath"+filepath.Join(launcher.DataDir, "cheats"),
-				"-CscreenshotPath"+filepath.Join(launcher.DataDir, "screenshots"),
-				"-CpatchPath"+filepath.Join(launcher.DataDir, "patches"),
-				launcher.Metadata.Run)
-		}
-		cmd.Dir = filepath.Join(launcher.DataDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "ps1":
-		// Run Playstation 1 disc
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Run)
-		switch launcher.SelectedRunner.Type {
-		case "duckstation":
-			cmd.Args = append(cmd.Args, "-nogui", "-fullscreen", launcher.Metadata.Run)
-		}
-		cmd.Dir = filepath.Join(launcher.DataDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "ps2":
-		// Run Playstation 2 disc
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Run)
-		switch launcher.SelectedRunner.Type {
-		case "pcsx2":
-			cmd.Args = append(cmd.Args, launcher.Metadata.Run)
-		}
-		cmd.Dir = filepath.Join(launcher.DataDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	err = launcher.SaveOptions()
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func (launcher *Launcher) PlayFromDisc() {
-	if !launcher.Metadata.RunFromDisc {
-		return
-	}
-
-	// Hide and show main launcher window
-	glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(false)
-		launcher.MainWindow.SetVisible(false)
-	})
-	defer glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(true)
-		launcher.MainWindow.SetVisible(true)
-	})
-
-	// Get working directory
-	workDir, err := os.Getwd()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Get user home directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Create game data directory
-	err = os.MkdirAll(launcher.DataDir, 0755)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	switch launcher.Metadata.System {
-	case "windows":
-		// Run Windows executables with umu
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Check for umu
-		umuPath, err := exec.LookPath("umu-run")
-		if err != nil {
-			umuPath = filepath.Join(homeDir, ".local/bin/umu-run")
-			_, err = os.Stat(umuPath)
-			if err != nil {
-				err = DownloadUmu()
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-		}
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		prefixDir := filepath.Join(launcher.DataDir, "prefix")
-
-		// Run winetricks
-		if _, err := os.Stat(prefixDir); err != nil && len(launcher.Metadata.WinetricksVerbs) > 0 {
-			progressWindow := NewProgressWindow("Setting up prefix...", 0, 1)
-
-			// Setup command
-			cmd := exec.Command("umu-run", "winetricks")
-			cmd.Args = append(cmd.Args, launcher.Metadata.WinetricksVerbs...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
+		var cmd *exec.Cmd
+		if launcher.IsGameInstalled() {
+			cmd = exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+			cmd.Dir = filepath.Join(launcher.DataDir, "files")
+		} else {
+			cmd = exec.Command(filepath.Join(workDir, "files", launcher.Metadata.Run))
 			cmd.Dir = filepath.Join(workDir, "files")
-
-			// Setup environment
-			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
-			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
-
-			err = cmd.Run()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			progressWindow.Close()
 		}
-
-		// Run game
-		cmd := exec.Command(umuPath, launcher.Metadata.Run)
-		cmd.Dir = filepath.Join(workDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-		cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
-		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
-
-		err = cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "linux":
-		// Run Linux binary/script
-
-		// Run game
-		cmd := exec.Command(filepath.Join(workDir, "files", launcher.Metadata.Run))
-		cmd.Dir = filepath.Join(workDir, "files")
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -379,139 +69,22 @@ func (launcher *Launcher) PlayFromDisc() {
 		if err != nil {
 			log.Fatal(err)
 		}
-	case "gb", "gbc", "gba":
-		// Run Gameboy Advance ROM
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		// Run game
-		runCmd := strings.Split(launcher.SelectedRunner.Run, " ")
-		cmd := exec.Command(runCmd[0], runCmd[1:]...)
-		if strings.HasPrefix(launcher.SelectedRunner.DisplayName, "mGBA") {
-			// Create saves directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Create cheats directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "cheats"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Create screenshots directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "screenshots"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-			// Create patches directory
-			err = os.MkdirAll(filepath.Join(launcher.DataDir, "patches"), 0755)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			cmd.Args = append(cmd.Args, "--fullscreen",
-				"-CsavegamePath="+filepath.Join(launcher.DataDir, "saves"),
-				"-CsavestatePath="+filepath.Join(launcher.DataDir, "saves"),
-				"-CcheatsPath="+filepath.Join(launcher.DataDir, "cheats"),
-				"-CscreenshotPath="+filepath.Join(launcher.DataDir, "screenshots"),
-				"-CpatchPath="+filepath.Join(launcher.DataDir, "patches"),
-				launcher.Metadata.Run)
-		}
-		cmd.Dir = filepath.Join(workDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "ps1":
-		// Run Playstation 1 disc
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Run)
-		switch launcher.SelectedRunner.Type {
-		case "duckstation":
-			cmd.Args = append(cmd.Args, "-nogui", "--fullscreen", launcher.Metadata.Run)
-		}
-		cmd.Dir = filepath.Join(workDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-	case "ps2":
-		// Run Playstation 2 disc
-
-		// Download runner if required
-		launcher.SelectedRunner.Download()
-
-		// Set game options
-		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-		launcher.SaveOptions()
-
-		// Run game
-		cmd := exec.Command(launcher.SelectedRunner.Run)
-		switch launcher.SelectedRunner.Type {
-		case "pcsx2":
-			cmd.Args = append(cmd.Args, launcher.Metadata.Run)
-		}
-		cmd.Dir = filepath.Join(workDir, "files")
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err := cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
+		launcher.GameProcess = nil
+	} else {
+		err := launcher.SelectedRunner.Run()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
+
+	// Show main launcher window
+	glib.IdleAdd(func() {
+		launcher.MainWindow.SetSensitive(true)
+		launcher.MainWindow.SetVisible(true)
+	})
 }
 
-func (launcher *Launcher) InstallGame() {
+func (launcher *Launcher) Install() {
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -548,7 +121,7 @@ func (launcher *Launcher) InstallGame() {
 	}
 
 	// Set game options
-	launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+	launcher.Options.Runner = launcher.SelectedRunner.RunnerID
 	launcher.SaveOptions()
 
 	// Copy launcher into game files
@@ -622,7 +195,7 @@ Categories=Game;
 
 			// Setup environment
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Run)
+			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Exec)
 			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 			err = cmd.Run()
@@ -638,7 +211,7 @@ Categories=Game;
 	syscall.Exec(exe, nil, os.Environ())
 }
 
-func (launcher *Launcher) UninstallGame() {
+func (launcher *Launcher) Uninstall() {
 	shouldQuit := launcher.IsRunningFromInstallationDirectory()
 
 	// Get user home directory

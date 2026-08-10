@@ -39,9 +39,13 @@ func (launcher *Launcher) ParseOptions() (err error) {
 }
 
 func (launcher *Launcher) SaveOptions() (err error) {
-
 	if launcher.DataDir == "" {
-		return fmt.Errorf("game not installed")
+		return fmt.Errorf("data directory is not set")
+	}
+
+	err = os.MkdirAll(launcher.DataDir, 0755)
+	if err != nil {
+		return
 	}
 
 	f, err := os.OpenFile(filepath.Join(launcher.DataDir, "options.yml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)

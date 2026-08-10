@@ -169,14 +169,14 @@ func createMainWindow() {
 
 		if len(runners) > 0 {
 			options := make([]string, 0)
-			selectedRunnerIndex := 0
+			selectedRunnerIndex := -1
 
 			for i, runner := range runners {
-				if runner.DisplayName == "" && runner.DisplayName == launcher.Options.Runner {
+				if selectedRunnerIndex == -1 && runner.RunnerID == launcher.Options.Runner {
 					selectedRunnerIndex = i
 				}
 
-				if strings.HasPrefix(runner.Run, "https://") || strings.HasPrefix(runner.Run, "http://") {
+				if strings.HasPrefix(runner.Exec, "https://") || strings.HasPrefix(runner.Exec, "http://") {
 					options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
 				} else {
 					options = append(options, runner.DisplayName)
@@ -184,6 +184,7 @@ func createMainWindow() {
 			}
 			runnerDropdown.SetModel(gtk.NewStringList(options))
 
+			selectedRunnerIndex = max(selectedRunnerIndex, 0)
 			runnerDropdown.SetSelected(uint(selectedRunnerIndex))
 			launcher.SelectedRunner = &runners[selectedRunnerIndex]
 
@@ -197,24 +198,20 @@ func createMainWindow() {
 	// Play buttons
 	playButton := gtk.NewButtonWithLabel("Play")
 	playButton.ConnectClicked(func() {
-		if launcher.IsGameInstalled() {
-			go launcher.Play()
-		} else {
-			go launcher.PlayFromDisc()
-		}
+		go launcher.Play()
 	})
 	// Install and uninstall buttons
 	installButton := gtk.NewButtonWithLabel("Install")
 	uninstallButton := gtk.NewButtonWithLabel("Uninstall")
 
 	installButton.ConnectClicked(func() {
-		go launcher.InstallGame()
+		go launcher.Install()
 	})
 	uninstallButton.ConnectClicked(func() {
 
 		launcher.MainWindow.SetSensitive(false)
 
-		go launcher.UninstallGame()
+		go launcher.Uninstall()
 	})
 
 	if launcher.IsGameInstalled() {

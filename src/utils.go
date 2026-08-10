@@ -136,6 +136,46 @@ func RemoveDirectoryRecursively(dir string) error {
 	return nil
 }
 
+func DownloadFile(downloadURL, filename, displayName string) (err error) {
+	// Create parent directories
+	err = os.MkdirAll(filepath.Dir(filename), 0755)
+	if err != nil {
+		return
+	}
+
+	// Download runner
+	f, err := os.Create(filename)
+	if err != nil {
+		return
+	}
+
+	defer func() {
+		f.Close()
+
+		// Remove the downloaded file if download is not completed
+		if err != nil {
+			os.Remove(filename)
+		}
+	}()
+
+	response, err := http.Get(downloadURL)
+	if err != nil {
+		return
+	}
+	defer response.Body.Close()
+
+	fmt.Println("Downloading " + displayName + "...")
+	progressWindow := NewProgressWindow64("Downloading "+displayName+"...", 0, response.ContentLength)
+	defer progressWindow.Close()
+
+	_, err = io.Copy(io.MultiWriter(f, &progressWindow), response.Body)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 type GithubAsset struct {
 	Name               string `json:"name"`
 	BrowserDownloadUrl string `json:"browser_download_url"`
