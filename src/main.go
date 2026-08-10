@@ -100,7 +100,7 @@ func createMainWindow() {
 	versionLabel := gtk.NewLabel("Version: " + launcher.Metadata.Version)
 	developerLabel := gtk.NewLabel("Developer: " + launcher.Metadata.Developer)
 	publisherLabel := gtk.NewLabel("Publisher: " + launcher.Metadata.Publisher)
-	gameTypeLabel := gtk.NewLabel("Type: " + typeStrings[launcher.Metadata.Type])
+	systemLabel := gtk.NewLabel("System: " + systemsUserReadable[launcher.Metadata.System])
 
 	// Description text view
 	textBuffer := gtk.NewTextBuffer(nil)
@@ -121,7 +121,7 @@ func createMainWindow() {
 		var err error
 		var runners []Runner
 
-		runnerFetcher, ok := RunnerFetchers[launcher.Metadata.Type]
+		runnerFetcher, ok := RunnerFetchers[launcher.Metadata.System]
 		if ok {
 			runners, err = runnerFetcher()
 			if err != nil || len(runners) == 0 {
@@ -195,7 +195,7 @@ func createMainWindow() {
 		}
 	}
 
-	if launcher.Metadata.Type == "linux" {
+	if launcher.Metadata.System == "linux" {
 		runnerDropdown.SetVisible(false)
 	} else if launcher.SelectedRunner == nil {
 		playButton.SetSensitive(false)
@@ -206,7 +206,7 @@ func createMainWindow() {
 	labelBox.Append(versionLabel)
 	labelBox.Append(developerLabel)
 	labelBox.Append(publisherLabel)
-	labelBox.Append(gameTypeLabel)
+	labelBox.Append(systemLabel)
 	metadataBox.Append(labelBox)
 	metadataBox.Append(scrolledWindow)
 	mainBox.Append(metadataBox)

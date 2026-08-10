@@ -14,32 +14,32 @@ type Metadata struct {
 	Developer       string   `yaml:"developer"`
 	Publisher       string   `yaml:"publisher"`
 	RunFromDisc     bool     `yaml:"run_from_disc"`
-	Type            string   `yaml:"type"`
+	System          string   `yaml:"system"`
 	Run             string   `yaml:"run"`
 	WinetricksVerbs []string `yaml:"winetricks_verbs"`
 }
 
-var typeStrings map[string]string = map[string]string{
-	"windows": "Windows executable",
-	"linux":   "Linux application",
-	"nes":     "NES/Famicom ROM",
-	"snes":    "SNES/Super Famicom ROM",
-	"n64":     "Nintendo 64 ROM",
-	"gc":      "Nintendo Gamecube ROM",
-	"wii":     "Nintendo Wii disc",
-	"wii-u":   "Nintendo Wii U disc",
-	"switch":  "Nintendo Switch ROM",
-	"gb":      "Nintendo Gameboy ROM",
-	"gbc":     "Nintendo Gameboy Color ROM",
-	"gba":     "Nintendo Gameboy Advance ROM",
-	"nds":     "Nintendo DS ROM",
-	"ps1":     "Sony Playstation 1 disc",
-	"ps2":     "Sony Playstation 2 disc",
-	"ps3":     "Sony Playstation 3 disc",
-	"ps4":     "Sony Playstation 4 disc",
-	"xbox":    "Microsoft Xbox disc",
-	"x360":    "Microsoft Xbox 360 disc",
-	"xone":    "Microsoft Xbox One disc",
+var systemsUserReadable map[string]string = map[string]string{
+	"windows": "Windows",
+	"linux":   "Linux",
+	"nes":     "NES/Famicom",
+	"snes":    "SNES/Super Famicom",
+	"n64":     "Nintendo 64",
+	"gc":      "Nintendo Gamecube",
+	"wii":     "Nintendo Wii",
+	"wii-u":   "Nintendo Wii U",
+	"switch":  "Nintendo Switch",
+	"gb":      "Nintendo Gameboy",
+	"gbc":     "Nintendo Gameboy Color",
+	"gba":     "Nintendo Gameboy Advance",
+	"nds":     "Nintendo DS",
+	"ps1":     "Sony Playstation 1",
+	"ps2":     "Sony Playstation 2",
+	"ps3":     "Sony Playstation 3",
+	"ps4":     "Sony Playstation 4",
+	"xbox":    "Microsoft Xbox",
+	"x360":    "Microsoft Xbox 360",
+	"xone":    "Microsoft Xbox One",
 }
 
 func ReadMetadata() (metadata Metadata, err error) {

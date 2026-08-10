@@ -45,7 +45,7 @@ func (launcher *Launcher) Play() {
 		log.Fatal(err)
 	}
 
-	switch launcher.Metadata.Type {
+	switch launcher.Metadata.System {
 	case "windows":
 		// Check for umu
 		umuPath, err := exec.LookPath("umu-run")
@@ -284,7 +284,7 @@ func (launcher *Launcher) PlayFromDisc() {
 		log.Fatal(err)
 	}
 
-	switch launcher.Metadata.Type {
+	switch launcher.Metadata.System {
 	case "windows":
 		// Run Windows executables with umu
 
@@ -588,7 +588,7 @@ Categories=Game;
 	}
 	f.Close()
 
-	switch launcher.Metadata.Type {
+	switch launcher.Metadata.System {
 	case "windows":
 		// Check for umu
 		umuPath, err := exec.LookPath("umu-run")
