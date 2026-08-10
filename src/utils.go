@@ -43,17 +43,30 @@ func Copy(source, dest string) error {
 	return nil
 }
 
-func CopyRecursivelyWithProgress(source, dest string) error {
+func CopyRecursivelyWithProgress(source, dest string, skipExistingFiles bool) error {
 	paths := make([]string, 0)
 
 	// Discover paths
 	err := filepath.WalkDir(source, func(path string, d fs.DirEntry, err error) error {
+		relPath, err := filepath.Rel(source, path)
+		if err != nil {
+			return err
+		}
+
+		if _, err := os.Stat(filepath.Join(dest, relPath)); err == nil && skipExistingFiles {
+			return nil
+		}
+
 		paths = append(paths, path)
 
 		return nil
 	})
 	if err != nil {
 		return err
+	}
+
+	if len(paths) == 0 {
+		return nil
 	}
 
 	fmt.Println("Copying files...")

@@ -34,6 +34,28 @@ func (launcher *Launcher) Play() {
 		launcher.MainWindow.SetVisible(false)
 	})
 
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Copy BIOS files
+	biosSystems, err := os.ReadDir("bios")
+	if err == nil {
+		for _, entry := range biosSystems {
+			if !entry.IsDir() {
+				continue
+			}
+
+			fmt.Println(entry.Name())
+
+			CopyRecursivelyWithProgress(filepath.Join("bios", entry.Name()),
+				filepath.Join(homeDir, ".local/share/game_disc_player/runners", entry.Name(), "bios"),
+				true)
+		}
+	}
+
 	if launcher.Metadata.System == "linux" {
 		// Run Linux binary/script
 
@@ -103,7 +125,7 @@ func (launcher *Launcher) Install() {
 		log.Fatal(err)
 	}
 
-	err = CopyRecursivelyWithProgress(filepath.Join(workDir, "files"), filepath.Join(launcher.DataDir, "files"))
+	err = CopyRecursivelyWithProgress(filepath.Join(workDir, "files"), filepath.Join(launcher.DataDir, "files"), false)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -160,6 +182,20 @@ Categories=Game;
 		log.Fatal(err)
 	}
 	f.Close()
+
+	// Copy BIOS files
+	biosSystems, err := os.ReadDir("bios")
+	if err == nil {
+		for _, entry := range biosSystems {
+			if !entry.IsDir() {
+				continue
+			}
+
+			CopyRecursivelyWithProgress(filepath.Join("bios", entry.Name()),
+				filepath.Join(homeDir, ".local/share/game_disc_player/runners", entry.Name(), "bios"),
+				true)
+		}
+	}
 
 	switch launcher.Metadata.System {
 	case "windows":
