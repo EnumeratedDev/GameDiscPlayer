@@ -175,6 +175,74 @@ func (launcher *Launcher) Play() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	case "ps1":
+		// Run Playstation 1 disc
+
+		// Download runner if required
+		launcher.SelectedRunner.Download()
+
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+		launcher.SaveOptions()
+
+		// Run game
+		cmd := exec.Command(launcher.SelectedRunner.Run)
+		switch launcher.SelectedRunner.Type {
+		case "duckstation":
+			cmd.Args = append(cmd.Args, "-nogui", "-fullscreen", launcher.Metadata.Run)
+		}
+		cmd.Dir = filepath.Join(launcher.DataDir, "files")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		launcher.GameProcess = cmd.Process
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "ps2":
+		// Run Playstation 2 disc
+
+		// Download runner if required
+		launcher.SelectedRunner.Download()
+
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+		launcher.SaveOptions()
+
+		// Run game
+		cmd := exec.Command(launcher.SelectedRunner.Run)
+		switch launcher.SelectedRunner.Type {
+		case "pcsx2":
+			cmd.Args = append(cmd.Args, launcher.Metadata.Run)
+		}
+		cmd.Dir = filepath.Join(launcher.DataDir, "files")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		launcher.GameProcess = cmd.Process
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	err = launcher.SaveOptions()
@@ -353,6 +421,74 @@ func (launcher *Launcher) PlayFromDisc() {
 				"-CscreenshotPath="+filepath.Join(launcher.DataDir, "screenshots"),
 				"-CpatchPath="+filepath.Join(launcher.DataDir, "patches"),
 				launcher.Metadata.Run)
+		}
+		cmd.Dir = filepath.Join(workDir, "files")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		launcher.GameProcess = cmd.Process
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "ps1":
+		// Run Playstation 1 disc
+
+		// Download runner if required
+		launcher.SelectedRunner.Download()
+
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+		launcher.SaveOptions()
+
+		// Run game
+		cmd := exec.Command(launcher.SelectedRunner.Run)
+		switch launcher.SelectedRunner.Type {
+		case "duckstation":
+			cmd.Args = append(cmd.Args, "-nogui", "--fullscreen", launcher.Metadata.Run)
+		}
+		cmd.Dir = filepath.Join(workDir, "files")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		// Setup environment
+		cmd.Env = cmd.Environ()
+		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+		err := cmd.Start()
+		if err != nil {
+			log.Fatal(err)
+		}
+		launcher.GameProcess = cmd.Process
+		err = cmd.Wait()
+		if err != nil {
+			log.Fatal(err)
+		}
+	case "ps2":
+		// Run Playstation 2 disc
+
+		// Download runner if required
+		launcher.SelectedRunner.Download()
+
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+		launcher.SaveOptions()
+
+		// Run game
+		cmd := exec.Command(launcher.SelectedRunner.Run)
+		switch launcher.SelectedRunner.Type {
+		case "pcsx2":
+			cmd.Args = append(cmd.Args, launcher.Metadata.Run)
 		}
 		cmd.Dir = filepath.Join(workDir, "files")
 		cmd.Stdin = os.Stdin

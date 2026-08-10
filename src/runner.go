@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,12 +16,24 @@ import (
 
 const PROTON_GE_VERSION_REQUEST_URL = "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases?per_page=75"
 const MGBA_VERSION_REQUEST_URL = "https://api.github.com/repos/mgba-emu/mgba/releases?per_page=75"
+const DUCKSTATION_VERSION_REQUEST_URL = "https://api.github.com/repos/stenzek/duckstation/releases?per_page=75"
+const PCSX2_VERSION_REQUEST_URL = "https://api.github.com/repos/PCSX2/pcsx2/releases?per_page=75"
+const RPCS3_VERSION_REQUEST_URL = "https://api.github.com/repos/RPCS3/rpcs3/releases?per_page=75"
 
 type Runner struct {
 	DisplayName string
 	Type        string
 	System      string
 	Run         string
+}
+
+var RunnerFetchers = map[string]func() ([]Runner, error){
+	"windows": GetWindowsRunners,
+	"gb":      GetGameboyAdvanceRunners,
+	"gbc":     GetGameboyAdvanceRunners,
+	"gba":     GetGameboyAdvanceRunners,
+	"ps1":     GetPlaystation1Runners,
+	"ps2":     GetPlaystation2Runners,
 }
 
 func GetWindowsRunners() (runners []Runner, err error) {
@@ -171,6 +184,219 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 			return runner.DisplayName == "mGBA "+release.TagName
 		}) {
 			runners = append(runners, Runner{DisplayName: "mGBA " + release.TagName, Type: "mgba", System: "gba", Run: release.Assets[assetId].BrowserDownloadUrl})
+		}
+	}
+
+	return
+}
+
+func GetPlaystation1Runners() (runners []Runner, err error) {
+	runners = make([]Runner, 0)
+
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	// Get local runners
+	if duckstationPath, err := exec.LookPath("duckstation"); err == nil {
+		buffer := bytes.Buffer{}
+		cmd := exec.Command(duckstationPath, "-nogui", "-version")
+		cmd.Stderr = &buffer
+		cmd.Run()
+
+		version := ""
+		for _, line := range strings.Split(buffer.String(), "\n") {
+			if strings.HasPrefix(line, "DuckStation Version") {
+				version = strings.Split(line, " ")[2]
+				version = strings.Split(version, "-")[0] + "-" + strings.Split(version, "-")[1]
+			}
+		}
+		if version != "" {
+			runners = append(runners, Runner{
+				DisplayName: "DuckStation " + version + " (System)",
+				Type:        "duckstation",
+				System:      "ps1",
+				Run:         duckstationPath,
+			})
+		}
+	}
+
+	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps1"))
+	if err == nil {
+		// Show installed runners in reverse alphabetical order
+		slices.Reverse(dirEntries)
+
+		for _, entry := range dirEntries {
+			entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps1", entry.Name())
+
+			// Check for duckstation runners
+			if strings.HasPrefix(entry.Name(), "DuckStation-") && strings.HasSuffix(entry.Name(), ".AppImage") {
+				buffer := bytes.Buffer{}
+				cmd := exec.Command(entryPath, "-nogui", "-version")
+				cmd.Stderr = &buffer
+				cmd.Run()
+
+				version := ""
+				for _, line := range strings.Split(buffer.String(), "\n") {
+					if strings.HasPrefix(line, "DuckStation Version") {
+						version = strings.Split(line, " ")[2]
+						version = strings.Split(version, "-")[0] + "-" + strings.Split(version, "-")[1]
+					}
+				}
+				if version == "" {
+					continue
+				}
+
+				runners = append(runners, Runner{DisplayName: "DuckStation " + version, Type: "duckstation", System: "ps1", Run: entryPath})
+			}
+		}
+	} else {
+		err = nil
+	}
+
+	// Get downloadable runners
+	githubReleases, err := GetGithubReleases(DUCKSTATION_VERSION_REQUEST_URL)
+	if err != nil {
+		return runners, nil
+	}
+
+	for _, release := range githubReleases {
+		if release.TagName[0] != 'v' {
+			continue
+		}
+		release.TagName = release.TagName[1:]
+
+		assetId := slices.IndexFunc(release.Assets, func(asset GithubAsset) bool {
+			if strings.HasPrefix(runtime.GOARCH, "amd64") {
+				return strings.HasSuffix(asset.Name, "-x64.AppImage")
+			} else if strings.HasPrefix(runtime.GOARCH, "arm64") {
+				return strings.HasSuffix(asset.Name, "-arm64.AppImage ")
+			}
+
+			return false
+		})
+		if assetId == -1 {
+			continue
+		}
+
+		if !slices.ContainsFunc(runners, func(runner Runner) bool {
+			return runner.DisplayName == "Duckstation "+release.TagName
+		}) {
+			runners = append(runners, Runner{DisplayName: "DuckStation " + release.TagName, Type: "duckstation", System: "ps1", Run: release.Assets[assetId].BrowserDownloadUrl})
+		}
+	}
+
+	return
+}
+
+func GetPlaystation2Runners() (runners []Runner, err error) {
+	runners = make([]Runner, 0)
+
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	// Get local runners
+	if pcsx2Path, err := exec.LookPath("pcsx2"); err == nil {
+		output, _ := exec.Command("flatpak", "run", "net.pcsx2.PCSX2", "-version").CombinedOutput()
+
+		version := ""
+		for _, line := range strings.Split(string(output), "\n") {
+			if v, found := strings.CutPrefix(line, "PCSX2 v"); found {
+				version = v
+				break
+			}
+		}
+		if version != "" {
+			runners = append(runners, Runner{
+				DisplayName: "PCSX2 " + version + " (System)",
+				Type:        "pcsx2",
+				System:      "ps2",
+				Run:         pcsx2Path,
+			})
+		}
+	}
+	if err = exec.Command("flatpak", "info", "net.pcsx2.PCSX2").Run(); err == nil {
+		output, _ := exec.Command("flatpak", "run", "net.pcsx2.PCSX2", "-version").CombinedOutput()
+
+		version := ""
+		for _, line := range strings.Split(string(output), "\n") {
+			if v, found := strings.CutPrefix(line, "PCSX2 v"); found {
+				version = v
+				break
+			}
+		}
+		if version != "" {
+			runners = append(runners, Runner{
+				DisplayName: "PCSX2 " + version + " (Flatpak)",
+				Type:        "pcsx2",
+				System:      "ps2",
+				Run:         "flatpak run net.pcsx2.PCSX2",
+			})
+		}
+	}
+
+	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps2"))
+	if err == nil {
+		// Show installed runners in reverse alphabetical order
+		slices.Reverse(dirEntries)
+
+		for _, entry := range dirEntries {
+			entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps2", entry.Name())
+
+			// Check for PCSX2 runners
+			if strings.HasPrefix(entry.Name(), "pcsx2-") && strings.HasSuffix(entry.Name(), ".AppImage") {
+				output, _ := exec.Command(entryPath, "-version").CombinedOutput()
+
+				version := ""
+				for _, line := range strings.Split(string(output), "\n") {
+					if v, found := strings.CutPrefix(line, "PCSX2 v"); found {
+						version = v
+						break
+					}
+				}
+				if version == "" {
+					return
+				}
+
+				runners = append(runners, Runner{DisplayName: "PCSX2 " + version, Type: "pcsx2", System: "ps2", Run: entryPath})
+			}
+		}
+	} else {
+		err = nil
+	}
+
+	// Get downloadable runners
+	githubReleases, err := GetGithubReleases(PCSX2_VERSION_REQUEST_URL)
+	if err != nil {
+		return runners, nil
+	}
+
+	for _, release := range githubReleases {
+		if release.TagName[0] != 'v' {
+			continue
+		}
+		release.TagName = release.TagName[1:]
+
+		assetId := slices.IndexFunc(release.Assets, func(asset GithubAsset) bool {
+			if strings.HasPrefix(runtime.GOARCH, "amd64") {
+				return strings.HasSuffix(asset.Name, "x64-Qt.AppImage")
+			}
+
+			return false
+		})
+		if assetId == -1 {
+			continue
+		}
+
+		if !slices.ContainsFunc(runners, func(runner Runner) bool {
+			return runner.DisplayName == "PCSX2 "+release.TagName
+		}) {
+			runners = append(runners, Runner{DisplayName: "PCSX2 " + release.TagName, Type: "pcsx2", System: "ps2", Run: release.Assets[assetId].BrowserDownloadUrl})
 		}
 	}
 

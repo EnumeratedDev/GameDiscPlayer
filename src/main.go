@@ -120,27 +120,22 @@ func createMainWindow() {
 	setRunnerDropdownOptions := func() {
 		var err error
 		var runners []Runner
-		switch launcher.Metadata.Type {
-		case "windows":
-			runners, err = GetWindowsRunners()
-			if err != nil || len(runners) == 0 {
-				runnerDropdown.SetSensitive(false)
-				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
-			}
-		case "gb", "gbc", "gba":
-			runners, err = GetGameboyAdvanceRunners()
-			fmt.Println(len(runners), err)
+
+		runnerFetcher, ok := RunnerFetchers[launcher.Metadata.Type]
+		if ok {
+			runners, err = runnerFetcher()
 			if err != nil || len(runners) == 0 {
 				runnerDropdown.SetSensitive(false)
 				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
 			}
 		}
+
 		if len(runners) > 0 {
 			options := make([]string, 0)
 			selectedRunnerIndex := 0
 
 			for i, runner := range runners {
-				if runner.DisplayName == launcher.Options.Runner {
+				if runner.DisplayName == "" && runner.DisplayName == launcher.Options.Runner {
 					selectedRunnerIndex = i
 				}
 

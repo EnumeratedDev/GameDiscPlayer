@@ -22,9 +22,24 @@ type Metadata struct {
 var typeStrings map[string]string = map[string]string{
 	"windows": "Windows executable",
 	"linux":   "Linux application",
-	"gb":      "Gameboy ROM",
-	"gbc":     "Gameboy Color ROM",
-	"gba":     "Gameboy Advance ROM",
+	"nes":     "NES/Famicom ROM",
+	"snes":    "SNES/Super Famicom ROM",
+	"n64":     "Nintendo 64 ROM",
+	"gc":      "Nintendo Gamecube ROM",
+	"wii":     "Nintendo Wii disc",
+	"wii-u":   "Nintendo Wii U disc",
+	"switch":  "Nintendo Switch ROM",
+	"gb":      "Nintendo Gameboy ROM",
+	"gbc":     "Nintendo Gameboy Color ROM",
+	"gba":     "Nintendo Gameboy Advance ROM",
+	"nds":     "Nintendo DS ROM",
+	"ps1":     "Sony Playstation 1 disc",
+	"ps2":     "Sony Playstation 2 disc",
+	"ps3":     "Sony Playstation 3 disc",
+	"ps4":     "Sony Playstation 4 disc",
+	"xbox":    "Microsoft Xbox disc",
+	"x360":    "Microsoft Xbox 360 disc",
+	"xone":    "Microsoft Xbox One disc",
 }
 
 func ReadMetadata() (metadata Metadata, err error) {
