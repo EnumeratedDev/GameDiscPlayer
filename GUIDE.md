@@ -24,11 +24,11 @@ version: "1.0.0"
 developer: "developer"
 publisher: "publisher"
 run_from_disc: true/false
-type: linux/windows/gb/gbc/gba
+system: linux/windows/gb/ps1/...
 run: "linux_game_bin/windows_game.exe/gameboy_rom.gb/..."
 ```
 4) Change the values in the metadata to suit your game backup (NOTE: Only enable `run_from_disc` if your game is a ROM or if you know that the game does not try to modify any files in its installation directory)
-5) Place a 256x256 size `icon.png` image file in the newly created directory
+5) Place an image file (Ideally 256px in width) in the newly created directory and rename it to `icon.png`
 5) Create a `files` directory in the newly created directory
 6) Copy your game files inside the `files` directory
 7) Change the `run` field in the metadata file to point to the game executable/ROM relative to the `files` directory (e.g for `files/my_game.exe` use `run: "my_game.exe"`)
