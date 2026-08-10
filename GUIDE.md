@@ -32,7 +32,8 @@ run: "linux_game_bin/windows_game.exe/gameboy_rom.gb/..."
 5) Create a `files` directory in the newly created directory
 6) Copy your game files inside the `files` directory
 7) Change the `run` field in the metadata file to point to the game executable/ROM relative to the `files` directory (e.g for `files/my_game.exe` use `run: "my_game.exe"`)
-8) Run the launcher binary and enjoy!
+8) (Optional, only works on local runners) For ROMs create a directory at `bios/<system>` and place your BIOS files there. They will automatically be copied to your system on play/install
+9) Run the launcher binary and enjoy!
 
 ## Additional `metadata.yml` fields
 - Some Windows games may require additional DLLs to work correctly. You can use winetricks verbs to install such DLLs like this:
