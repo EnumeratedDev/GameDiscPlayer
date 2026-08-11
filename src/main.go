@@ -259,18 +259,18 @@ func createMainWindow() {
 	launcher.MainWindow.SetChild(mainBox)
 }
 
-func updateLocalData() (err error) {
+func updateLocalData() error {
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return
+		return err
 	}
 
 	// Rename old 'game_disc_player' directory to 'GameDiscPlayer'
 	err = os.Rename(filepath.Join(homeDir, ".local/share/game_disc_player"), filepath.Join(homeDir, ".local/share/GameDiscPlayer"))
-	if err != nil {
-		return
+	if err != nil && !os.IsNotExist(err) {
+		return err
 	}
 
-	return
+	return nil
 }
