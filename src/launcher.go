@@ -51,7 +51,7 @@ func (launcher *Launcher) Play() {
 			fmt.Println(entry.Name())
 
 			CopyRecursivelyWithProgress(filepath.Join("bios", entry.Name()),
-				filepath.Join(homeDir, ".local/share/game_disc_player/runners", entry.Name(), "bios"),
+				filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", entry.Name(), "bios"),
 				true)
 		}
 	}
@@ -192,7 +192,7 @@ Categories=Game;
 			}
 
 			CopyRecursivelyWithProgress(filepath.Join("bios", entry.Name()),
-				filepath.Join(homeDir, ".local/share/game_disc_player/runners", entry.Name(), "bios"),
+				filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", entry.Name(), "bios"),
 				true)
 		}
 	}

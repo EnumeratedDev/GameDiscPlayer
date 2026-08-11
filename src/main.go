@@ -38,6 +38,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Update local data
+	err = updateLocalData()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Read game metadata
 	launcher.Metadata, err = ReadMetadata()
 	if err != nil {
@@ -251,4 +257,20 @@ func createMainWindow() {
 	mainBox.Append(uninstallButton)
 
 	launcher.MainWindow.SetChild(mainBox)
+}
+
+func updateLocalData() (err error) {
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+
+	// Rename old 'game_disc_player' directory to 'GameDiscPlayer'
+	err = os.Rename(filepath.Join(homeDir, ".local/share/game_disc_player"), filepath.Join(homeDir, ".local/share/GameDiscPlayer"))
+	if err != nil {
+		return
+	}
+
+	return
 }

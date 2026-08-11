@@ -45,7 +45,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 	if err != nil {
 		return
 	}
-	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/windows"))
+	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/windows"))
 	if err != nil {
 		return
 	}
@@ -54,7 +54,7 @@ func GetWindowsRunners() (runners []Runner, err error) {
 	slices.Reverse(dirEntries)
 
 	for _, entry := range dirEntries {
-		entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/windows", entry.Name())
+		entryPath := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/windows", entry.Name())
 
 		if b, err := os.ReadFile(filepath.Join(entryPath, "compatibilitytool.vdf")); err == nil {
 			lines := strings.Split(strings.TrimSpace(string(b)), "\n")
@@ -168,13 +168,13 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 		}
 	}
 
-	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/gba"))
+	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/gba"))
 	if err == nil {
 		// Show installed runners in reverse alphabetical order
 		slices.Reverse(dirEntries)
 
 		for _, entry := range dirEntries {
-			entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/gba", entry.Name())
+			entryPath := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/gba", entry.Name())
 
 			// Check for mgba runners
 			if _, err := os.Stat(filepath.Join(entryPath, "mgba")); err == nil {
@@ -270,13 +270,13 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 		}
 	}
 
-	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps1"))
+	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/ps1"))
 	if err == nil {
 		// Show installed runners in reverse alphabetical order
 		slices.Reverse(dirEntries)
 
 		for _, entry := range dirEntries {
-			entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps1", entry.Name())
+			entryPath := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/ps1", entry.Name())
 
 			// Check for duckstation runners
 			if _, err := os.Stat(filepath.Join(entryPath, "duckstation")); err == nil {
@@ -403,13 +403,13 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 		}
 	}
 
-	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps2"))
+	dirEntries, err := os.ReadDir(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/ps2"))
 	if err == nil {
 		// Show installed runners in reverse alphabetical order
 		slices.Reverse(dirEntries)
 
 		for _, entry := range dirEntries {
-			entryPath := filepath.Join(homeDir, ".local/share/game_disc_player/runners/ps2", entry.Name())
+			entryPath := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners/ps2", entry.Name())
 
 			// Check for PCSX2 runners
 			if _, err = os.Stat(filepath.Join(entryPath, "pcsx2")); err == nil {
@@ -493,7 +493,7 @@ func downloadWindowsRunner(runner *Runner) (err error) {
 	}
 
 	// Download runner
-	filename := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System)
+	filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System)
 	err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 	if err != nil {
 		return
@@ -508,7 +508,7 @@ func downloadWindowsRunner(runner *Runner) (err error) {
 	cmd := exec.Command("tar", "xf", filename)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Dir = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System)
+	cmd.Dir = filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System)
 
 	err = cmd.Run()
 	if err != nil {
@@ -518,7 +518,7 @@ func downloadWindowsRunner(runner *Runner) (err error) {
 	// Remove downloaded file
 	os.Remove(filename)
 
-	runner.Exec = filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName)
+	runner.Exec = filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName)
 
 	return
 }
@@ -537,7 +537,7 @@ func downloadGameboyAdvanceRunner(runner *Runner) (err error) {
 	// Download runner
 	switch runner.Type {
 	case "mgba":
-		filename := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName, "mgba")
+		filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName, "mgba")
 		err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 		if err != nil {
 			return
@@ -595,7 +595,7 @@ gba.bios=../bios/gba_bios.bin
 		}
 
 		// Create bios directory
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, "bios"), 0755)
+		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, "bios"), 0755)
 		if err != nil {
 			return err
 		}
@@ -622,7 +622,7 @@ func downloadPlaystation1Runner(runner *Runner) (err error) {
 	// Download runner
 	switch runner.Type {
 	case "duckstation":
-		filename := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName, "duckstation")
+		filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName, "duckstation")
 		err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 		if err != nil {
 			return
@@ -687,7 +687,7 @@ OpenPauseMenu = Keyboard/Escape`
 		}
 
 		// Create bios directory
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, "bios"), 0755)
+		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, "bios"), 0755)
 		if err != nil {
 			return err
 		}
@@ -714,7 +714,7 @@ func downloadPlaystation2Runner(runner *Runner) (err error) {
 	// Download runner
 	switch runner.Type {
 	case "pcsx2":
-		filename := filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, runner.DisplayName, "pcsx2")
+		filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName, "pcsx2")
 		err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 		if err != nil {
 			return
@@ -812,7 +812,7 @@ CheckAtStartup = false
 		}
 
 		// Create bios directory
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/game_disc_player/runners", runner.System, "bios"), 0755)
+		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, "bios"), 0755)
 		if err != nil {
 			return err
 		}
@@ -1166,5 +1166,5 @@ func (runner *Runner) IsLocal() bool {
 		return false
 	}
 
-	return strings.HasPrefix(runner.Exec, filepath.Join(homeDir, ".local/share/game_disc_player/runners"))
+	return strings.HasPrefix(runner.Exec, filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners"))
 }
