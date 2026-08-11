@@ -734,6 +734,10 @@ Theme =
 [Folders]
 Bios = ../../bios
 
+[EmuCore]
+EnableFastBoot = false
+EnableFastBootFastForward = true
+
 [InputSources]
 Keyboard = true
 Mouse = true
