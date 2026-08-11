@@ -158,8 +158,17 @@ func createMainWindow() {
 	descriptionScrolledWindow.SetSizeRequest(-1, 200)
 	descriptionScrolledWindow.SetPolicy(gtk.PolicyType(gtk.PolicyNever), gtk.PolicyType(gtk.PolicyAutomatic))
 	descriptionScrolledWindow.SetChild(descriptionTextView)
+	// Runner settings box
+	runnerSettingsBox := gtk.NewBox(gtk.Orientation(gtk.OrientationHorizontal), 10)
+	// Runner settings button
+	runnerSettingsButton := gtk.NewButtonFromIconName("preferences-other")
+	runnerSettingsBox.SetTooltipText("Open runner settings")
+	runnerSettingsButton.ConnectClicked(func() {
+		go launcher.OpenRunnerSettings()
+	})
 	// Runner dropdown
 	runnerDropdown := gtk.NewDropDownFromStrings(nil)
+	runnerDropdown.SetHExpand(true)
 	setRunnerDropdownOptions := func() {
 		var err error
 		var runners []Runner
@@ -194,9 +203,13 @@ func createMainWindow() {
 			runnerDropdown.SetSelected(uint(selectedRunnerIndex))
 			launcher.SelectedRunner = &runners[selectedRunnerIndex]
 
+			runnerSettingsButton.SetVisible(launcher.SelectedRunner.openSettingsFunc != nil)
+
 			runnerDropdown.Connect("notify::selected", func() {
 				launcher.SelectedRunner = &runners[runnerDropdown.Selected()]
 				launcher.Options.Runner = launcher.SelectedRunner.DisplayName
+
+				runnerSettingsButton.SetVisible(launcher.SelectedRunner.openSettingsFunc != nil)
 			})
 		}
 	}
@@ -236,7 +249,7 @@ func createMainWindow() {
 	}
 
 	if launcher.Metadata.System == "linux" {
-		runnerDropdown.SetVisible(false)
+		runnerSettingsBox.SetVisible(false)
 	} else if launcher.SelectedRunner == nil {
 		playButton.SetSensitive(false)
 		installButton.SetSensitive(false)
@@ -249,8 +262,10 @@ func createMainWindow() {
 	labelBox.Append(systemScrolledWindow)
 	metadataBox.Append(labelBox)
 	metadataBox.Append(descriptionScrolledWindow)
+	runnerSettingsBox.Append(runnerDropdown)
+	runnerSettingsBox.Append(runnerSettingsButton)
 	mainBox.Append(metadataBox)
-	mainBox.Append(runnerDropdown)
+	mainBox.Append(runnerSettingsBox)
 
 	mainBox.Append(playButton)
 	mainBox.Append(installButton)

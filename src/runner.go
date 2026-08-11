@@ -24,8 +24,9 @@ type Runner struct {
 	System      string
 	Exec        string
 
-	downloadFunc func(runner *Runner) error
-	runFunc      func(runner *Runner) error
+	downloadFunc     func(runner *Runner) error
+	runFunc          func(runner *Runner) error
+	openSettingsFunc func(runner *Runner) error
 }
 
 var RunnerFetchers = map[string]func() ([]Runner, error){
@@ -127,12 +128,13 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 			version := versionSplit[len(versionSplit)-2]
 
 			runners = append(runners, Runner{
-				DisplayName: "mGBA " + version + " (System)",
-				RunnerID:    "mgba_system",
-				Type:        "mgba",
-				System:      "gba",
-				Exec:        mgbaPath,
-				runFunc:     runGameboyAdvanceRunner,
+				DisplayName:      "mGBA " + version + " (System)",
+				RunnerID:         "mgba_system",
+				Type:             "mgba",
+				System:           "gba",
+				Exec:             mgbaPath,
+				runFunc:          runGameboyAdvanceRunner,
+				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
 		}
 	} else if mgbaPath, err := exec.LookPath("mgba"); err == nil {
@@ -142,12 +144,13 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 			version := versionSplit[len(versionSplit)-2]
 
 			runners = append(runners, Runner{
-				DisplayName: "mGBA " + version + " (System)",
-				RunnerID:    "mgba_system",
-				Type:        "mgba",
-				System:      "gba",
-				Exec:        mgbaPath,
-				runFunc:     runGameboyAdvanceRunner,
+				DisplayName:      "mGBA " + version + " (System)",
+				RunnerID:         "mgba_system",
+				Type:             "mgba",
+				System:           "gba",
+				Exec:             mgbaPath,
+				runFunc:          runGameboyAdvanceRunner,
+				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
 		}
 	}
@@ -158,12 +161,13 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 			version := versionSplit[len(versionSplit)-2]
 
 			runners = append(runners, Runner{
-				DisplayName: "mGBA " + version + " (Flatpak)",
-				RunnerID:    "mgba_flatpak",
-				Type:        "mgba",
-				System:      "gba",
-				Exec:        "io.mgba.mGBA",
-				runFunc:     runGameboyAdvanceRunner,
+				DisplayName:      "mGBA " + version + " (Flatpak)",
+				RunnerID:         "mgba_flatpak",
+				Type:             "mgba",
+				System:           "gba",
+				Exec:             "io.mgba.mGBA",
+				runFunc:          runGameboyAdvanceRunner,
+				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
 		}
 	}
@@ -187,12 +191,13 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				version := versionSplit[len(versionSplit)-2]
 
 				runners = append(runners, Runner{
-					DisplayName: "mGBA " + version,
-					RunnerID:    "mgba_" + version,
-					Type:        "mgba",
-					System:      "gba",
-					Exec:        filepath.Join(entryPath, "mgba"),
-					runFunc:     runGameboyAdvanceRunner,
+					DisplayName:      "mGBA " + version,
+					RunnerID:         "mgba_" + version,
+					Type:             "mgba",
+					System:           "gba",
+					Exec:             filepath.Join(entryPath, "mgba"),
+					runFunc:          runGameboyAdvanceRunner,
+					openSettingsFunc: openSettingsGameboyAdvanceRunner,
 				})
 			}
 		}
@@ -224,13 +229,14 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 			return runner.RunnerID == "mgba_"+release.TagName
 		}) {
 			runners = append(runners, Runner{
-				DisplayName:  "mGBA " + release.TagName,
-				RunnerID:     "mgba_" + release.TagName,
-				Type:         "mgba",
-				System:       "gba",
-				Exec:         release.Assets[assetId].BrowserDownloadUrl,
-				downloadFunc: downloadGameboyAdvanceRunner,
-				runFunc:      runGameboyAdvanceRunner,
+				DisplayName:      "mGBA " + release.TagName,
+				RunnerID:         "mgba_" + release.TagName,
+				Type:             "mgba",
+				System:           "gba",
+				Exec:             release.Assets[assetId].BrowserDownloadUrl,
+				downloadFunc:     downloadGameboyAdvanceRunner,
+				runFunc:          runGameboyAdvanceRunner,
+				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
 		}
 	}
@@ -260,12 +266,13 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 		}
 		if version != "" {
 			runners = append(runners, Runner{
-				DisplayName: "DuckStation " + version + " (System)",
-				RunnerID:    "duckstation_system",
-				Type:        "duckstation",
-				System:      "ps1",
-				Exec:        duckstationPath,
-				runFunc:     runPlaystation1Runner,
+				DisplayName:      "DuckStation " + version + " (System)",
+				RunnerID:         "duckstation_system",
+				Type:             "duckstation",
+				System:           "ps1",
+				Exec:             duckstationPath,
+				runFunc:          runPlaystation1Runner,
+				openSettingsFunc: openSettingsPlaystation1Runner,
 			})
 		}
 	}
@@ -294,12 +301,13 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 				}
 
 				runners = append(runners, Runner{
-					DisplayName: "DuckStation " + version,
-					RunnerID:    "duckstation_" + version,
-					Type:        "duckstation",
-					System:      "ps1",
-					Exec:        filepath.Join(entryPath, "duckstation"),
-					runFunc:     runPlaystation1Runner,
+					DisplayName:      "DuckStation " + version,
+					RunnerID:         "duckstation_" + version,
+					Type:             "duckstation",
+					System:           "ps1",
+					Exec:             filepath.Join(entryPath, "duckstation"),
+					runFunc:          runPlaystation1Runner,
+					openSettingsFunc: openSettingsPlaystation1Runner,
 				})
 			}
 		}
@@ -336,13 +344,14 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 			return runner.RunnerID == "duckstation_"+release.TagName
 		}) {
 			runners = append(runners, Runner{
-				DisplayName:  "DuckStation " + release.TagName,
-				RunnerID:     "duckstation_" + release.TagName,
-				Type:         "duckstation",
-				System:       "ps1",
-				Exec:         release.Assets[assetId].BrowserDownloadUrl,
-				downloadFunc: downloadPlaystation1Runner,
-				runFunc:      runPlaystation1Runner,
+				DisplayName:      "DuckStation " + release.TagName,
+				RunnerID:         "duckstation_" + release.TagName,
+				Type:             "duckstation",
+				System:           "ps1",
+				Exec:             release.Assets[assetId].BrowserDownloadUrl,
+				downloadFunc:     downloadPlaystation1Runner,
+				runFunc:          runPlaystation1Runner,
+				openSettingsFunc: openSettingsPlaystation1Runner,
 			})
 		}
 	}
@@ -372,12 +381,13 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 		}
 		if version != "" {
 			runners = append(runners, Runner{
-				DisplayName: "PCSX2 " + version + " (System)",
-				RunnerID:    "pcsx2_system",
-				Type:        "pcsx2",
-				System:      "ps2",
-				Exec:        pcsx2Path,
-				runFunc:     runPlaystation2Runner,
+				DisplayName:      "PCSX2 " + version + " (System)",
+				RunnerID:         "pcsx2_system",
+				Type:             "pcsx2",
+				System:           "ps2",
+				Exec:             pcsx2Path,
+				runFunc:          runPlaystation2Runner,
+				openSettingsFunc: openSettingsPlaystation2Runner,
 			})
 		}
 	}
@@ -393,12 +403,13 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 		}
 		if version != "" {
 			runners = append(runners, Runner{
-				DisplayName: "PCSX2 " + version + " (Flatpak)",
-				RunnerID:    "pcsx2_flatpak",
-				Type:        "pcsx2",
-				System:      "ps2",
-				Exec:        "net.pcsx2.PCSX2",
-				runFunc:     runPlaystation2Runner,
+				DisplayName:      "PCSX2 " + version + " (Flatpak)",
+				RunnerID:         "pcsx2_flatpak",
+				Type:             "pcsx2",
+				System:           "ps2",
+				Exec:             "net.pcsx2.PCSX2",
+				runFunc:          runPlaystation2Runner,
+				openSettingsFunc: openSettingsPlaystation2Runner,
 			})
 		}
 	}
@@ -427,12 +438,13 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 				}
 
 				runners = append(runners, Runner{
-					DisplayName: "PCSX2 " + version,
-					RunnerID:    "pcsx2_" + version,
-					Type:        "pcsx2",
-					System:      "ps2",
-					Exec:        filepath.Join(entryPath, "pcsx2"),
-					runFunc:     runPlaystation2Runner,
+					DisplayName:      "PCSX2 " + version,
+					RunnerID:         "pcsx2_" + version,
+					Type:             "pcsx2",
+					System:           "ps2",
+					Exec:             filepath.Join(entryPath, "pcsx2"),
+					runFunc:          runPlaystation2Runner,
+					openSettingsFunc: openSettingsPlaystation2Runner,
 				})
 			}
 		}
@@ -467,13 +479,14 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 			return runner.RunnerID == "pcsx2_"+release.TagName
 		}) {
 			runners = append(runners, Runner{
-				DisplayName:  "PCSX2 " + release.TagName,
-				RunnerID:     "pcsx2_" + release.TagName,
-				Type:         "pcsx2",
-				System:       "ps2",
-				Exec:         release.Assets[assetId].BrowserDownloadUrl,
-				downloadFunc: downloadPlaystation2Runner,
-				runFunc:      runPlaystation2Runner,
+				DisplayName:      "PCSX2 " + release.TagName,
+				RunnerID:         "pcsx2_" + release.TagName,
+				Type:             "pcsx2",
+				System:           "ps2",
+				Exec:             release.Assets[assetId].BrowserDownloadUrl,
+				downloadFunc:     downloadPlaystation2Runner,
+				runFunc:          runPlaystation2Runner,
+				openSettingsFunc: openSettingsPlaystation2Runner,
 			})
 		}
 	}
@@ -1135,6 +1148,152 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 	return
 }
 
+func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
+	// Download runner if required
+	err = runner.Download()
+	if err != nil {
+		return
+	}
+
+	// Open settings
+	cmd := exec.Command(runner.Exec)
+	if runner.IsFlatpak() {
+		flatpakPath, err := exec.LookPath("flatpak")
+		if err != nil {
+			log.Fatal(err)
+		}
+		cmd.Path = flatpakPath
+		cmd.Args = append(cmd.Args, "run", runner.Exec)
+	}
+	switch runner.Type {
+	case "mgba":
+		if runner.IsLocal() {
+			cmd.Dir = filepath.Dir(runner.Exec)
+		} else {
+			err = os.MkdirAll(filepath.Join(launcher.DataDir, "saves"), 0755)
+			if err != nil {
+				return
+			}
+			cmd.Args = append(cmd.Args, "-CsavegamePath="+filepath.Join(launcher.DataDir, "saves"))
+		}
+	default:
+		return fmt.Errorf("unknown runner type '%s'", runner.Type)
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Setup environment
+	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+	err = cmd.Start()
+	if err != nil {
+		return
+	}
+	launcher.GameProcess = cmd.Process
+	err = cmd.Wait()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func openSettingsPlaystation1Runner(runner *Runner) (err error) {
+	// Download runner if required
+	err = runner.Download()
+	if err != nil {
+		return
+	}
+
+	// Run game
+	cmd := exec.Command(runner.Exec)
+	if runner.IsFlatpak() {
+		flatpakPath, err := exec.LookPath("flatpak")
+		if err != nil {
+			log.Fatal(err)
+		}
+		cmd.Path = flatpakPath
+		cmd.Args = append(cmd.Args, "run", runner.Exec)
+	}
+	switch runner.Type {
+	case "duckstation":
+		if runner.IsLocal() {
+			cmd.Dir = filepath.Dir(runner.Exec)
+		}
+	default:
+		return fmt.Errorf("unknown runner type '%s'", runner.Type)
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Setup environment
+	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+	err = cmd.Start()
+	if err != nil {
+		return
+	}
+	launcher.GameProcess = cmd.Process
+	err = cmd.Wait()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+func openSettingsPlaystation2Runner(runner *Runner) (err error) {
+	// Download runner if required
+	err = runner.Download()
+	if err != nil {
+		return
+	}
+
+	// Run game
+	cmd := exec.Command(runner.Exec)
+	if runner.IsFlatpak() {
+		flatpakPath, err := exec.LookPath("flatpak")
+		if err != nil {
+			return err
+		}
+		cmd.Path = flatpakPath
+		cmd.Args = append(cmd.Args, "run", runner.Exec)
+	}
+	switch runner.Type {
+	case "pcsx2":
+		if runner.IsLocal() {
+			cmd.Dir = filepath.Dir(runner.Exec)
+			cmd.Args = append(cmd.Args, "-portable")
+		}
+	default:
+		return fmt.Errorf("unknown runner type '%s'", runner.Type)
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Setup environment
+	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+	err = cmd.Start()
+	if err != nil {
+		return
+	}
+	launcher.GameProcess = cmd.Process
+	err = cmd.Wait()
+	if err != nil {
+		return
+	}
+	launcher.GameProcess = nil
+
+	return
+}
+
 func (runner *Runner) Download() error {
 	if !strings.HasPrefix(runner.Exec, "http://") && !strings.HasPrefix(runner.Exec, "https://") {
 		return nil
@@ -1153,6 +1312,14 @@ func (runner *Runner) Run() error {
 	}
 
 	return runner.runFunc(runner)
+}
+
+func (runner *Runner) OpenSettings() error {
+	if runner.openSettingsFunc == nil {
+		return fmt.Errorf(runner.DisplayName + " runner is missing an openSettings function")
+	}
+
+	return runner.openSettingsFunc(runner)
 }
 
 func (runner *Runner) IsSystem() bool {

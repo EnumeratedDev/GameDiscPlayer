@@ -106,6 +106,27 @@ func (launcher *Launcher) Play() {
 	})
 }
 
+func (launcher *Launcher) OpenRunnerSettings() {
+	// Hide main launcher window
+	glib.IdleAdd(func() {
+		launcher.MainWindow.SetSensitive(false)
+		launcher.MainWindow.SetVisible(false)
+	})
+
+	if launcher.SelectedRunner != nil {
+		err := launcher.SelectedRunner.OpenSettings()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	// Show main launcher window
+	glib.IdleAdd(func() {
+		launcher.MainWindow.SetSensitive(true)
+		launcher.MainWindow.SetVisible(true)
+	})
+}
+
 func (launcher *Launcher) Install() {
 	// Get working directory
 	workDir, err := os.Getwd()
