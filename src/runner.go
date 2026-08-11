@@ -464,7 +464,7 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 		}
 
 		if !slices.ContainsFunc(runners, func(runner Runner) bool {
-			return runner.RunnerID == "pcsx2_ "+release.TagName
+			return runner.RunnerID == "pcsx2_"+release.TagName
 		}) {
 			runners = append(runners, Runner{
 				DisplayName:  "PCSX2 " + release.TagName,
