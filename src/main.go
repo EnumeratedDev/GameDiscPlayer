@@ -5,9 +5,11 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/diamondburned/gotk4/pkg/gio/v2"
+	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -33,13 +35,33 @@ func main() {
 		}
 	}
 
-	homeDir, err := os.UserHomeDir()
+	// Update local data
+	err := updateLocalData()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Update local data
-	err = updateLocalData()
+	launcher.App = gtk.NewApplication("dev.enumerated.GameDiscPlayer", gio.ApplicationFlags(gio.ApplicationNonUnique))
+
+	launcher.App.AddMainOption("offline", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Do not fetch downloadable runners from the internet", "")
+	launcher.App.AddMainOption("runner", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgString), "Set the runner to use", "runner_id")
+	launcher.App.AddMainOption("list-runners", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "List all available runners", "")
+	launcher.App.AddMainOption("play", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and launch the game", "")
+	launcher.App.AddMainOption("settings", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and open runner settings", "")
+	launcher.App.AddMainOption("install", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and install game", "")
+	launcher.App.AddMainOption("uninstall", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and uninstall game", "")
+
+	launcher.App.ConnectStartup(handleStartup)
+	launcher.App.ConnectHandleLocalOptions(handleLocalOptions)
+	launcher.App.ConnectActivate(handleActivate)
+
+	if code := launcher.App.Run(os.Args); code > 0 {
+		os.Exit(code)
+	}
+}
+
+func handleStartup() {
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -59,15 +81,72 @@ func main() {
 		log.Fatal(err)
 	}
 
-	launcher.App = gtk.NewApplication("dev.enumerated.GameDiscPlayer", gio.ApplicationFlags(gio.ApplicationNonUnique))
-	launcher.App.ConnectActivate(activate)
+	// Get runners
+	err = launcher.FetchAvailableRunners()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	if code := launcher.App.Run(os.Args); code > 0 {
-		os.Exit(code)
+	if launcher.SelectedRunner != "" && !slices.ContainsFunc(launcher.Runners, func(r Runner) bool {
+		return r.RunnerID == launcher.SelectedRunner
+	}) {
+		log.Fatalf("invalid runner_id")
 	}
 }
 
-func activate() {
+func handleLocalOptions(options *glib.VariantDict) (gint int) {
+	launcher.Offline = options.Contains("offline")
+
+	if v := options.LookupValue("runner", glib.NewVariantType("s")); v != nil {
+		launcher.SelectedRunner = v.String()
+	}
+	if options.Contains("list-runners") {
+		launcher.NoGUI = true
+		handleStartup()
+
+		fmt.Println("Runner ID\tDisplay Name\tType\tInstalled")
+		for _, runner := range launcher.Runners {
+			isInstalled := !strings.HasPrefix(runner.Exec, "http://") && !strings.HasPrefix(runner.Exec, "https://")
+
+			fmt.Printf("%s\t%s\t%s\t%t\n", runner.RunnerID, runner.DisplayName, runner.Type, isInstalled)
+		}
+		return 0
+	}
+	if options.Contains("play") {
+		launcher.NoGUI = true
+		handleStartup()
+
+		launcher.Play()
+
+		return 0
+	} else if options.Contains("settings") {
+		launcher.NoGUI = true
+		handleStartup()
+
+		launcher.OpenRunnerSettings()
+
+		return 0
+	} else if options.Contains("install") {
+		launcher.NoGUI = true
+		handleStartup()
+
+		launcher.Install()
+
+		return 0
+	} else if options.Contains("uninstall") {
+		launcher.Offline = true
+		launcher.NoGUI = true
+		handleStartup()
+
+		launcher.Uninstall()
+
+		return 0
+	}
+
+	return -1
+}
+
+func handleActivate() {
 	// Set launcher icon
 	gtk.WindowSetDefaultIconName("GameDiscPlayer")
 
@@ -170,48 +249,38 @@ func createMainWindow() {
 	runnerDropdown := gtk.NewDropDownFromStrings(nil)
 	runnerDropdown.SetHExpand(true)
 	setRunnerDropdownOptions := func() {
-		var err error
-		var runners []Runner
-
-		runnerFetcher, ok := RunnerFetchers[launcher.Metadata.System]
-		if ok {
-			runners, err = runnerFetcher()
-			if err != nil || len(runners) == 0 {
-				runnerDropdown.SetSensitive(false)
-				runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
-			}
+		if len(launcher.Runners) == 0 {
+			runnerDropdown.SetSensitive(false)
+			runnerDropdown.SetModel(gtk.NewStringList([]string{"No runners available"}))
+			return
 		}
 
-		if len(runners) > 0 {
-			options := make([]string, 0)
-			selectedRunnerIndex := -1
-
-			for i, runner := range runners {
-				if selectedRunnerIndex == -1 && runner.RunnerID == launcher.Options.Runner {
-					selectedRunnerIndex = i
-				}
-
-				if strings.HasPrefix(runner.Exec, "https://") || strings.HasPrefix(runner.Exec, "http://") {
-					options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
-				} else {
-					options = append(options, runner.DisplayName)
-				}
+		options := make([]string, 0)
+		selected := -1
+		for i, runner := range launcher.Runners {
+			if selected == -1 && runner.RunnerID == launcher.SelectedRunner {
+				launcher.SelectedRunner = runner.RunnerID
+				selected = i
 			}
-			runnerDropdown.SetModel(gtk.NewStringList(options))
-
-			selectedRunnerIndex = max(selectedRunnerIndex, 0)
-			runnerDropdown.SetSelected(uint(selectedRunnerIndex))
-			launcher.SelectedRunner = &runners[selectedRunnerIndex]
-
-			runnerSettingsButton.SetVisible(launcher.SelectedRunner.openSettingsFunc != nil)
-
-			runnerDropdown.Connect("notify::selected", func() {
-				launcher.SelectedRunner = &runners[runnerDropdown.Selected()]
-				launcher.Options.Runner = launcher.SelectedRunner.DisplayName
-
-				runnerSettingsButton.SetVisible(launcher.SelectedRunner.openSettingsFunc != nil)
-			})
+			if strings.HasPrefix(runner.Exec, "https://") || strings.HasPrefix(runner.Exec, "http://") {
+				options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
+			} else {
+				options = append(options, runner.DisplayName)
+			}
 		}
+		runnerDropdown.SetModel(gtk.NewStringList(options))
+		if selected >= 0 {
+			runnerDropdown.SetSelected(uint(selected))
+			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil)
+		} else {
+			launcher.SelectedRunner = launcher.Runners[0].RunnerID
+		}
+
+		runnerDropdown.Connect("notify::selected", func() {
+			launcher.SelectedRunner = launcher.Runners[runnerDropdown.Selected()].RunnerID
+
+			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil)
+		})
 	}
 	setRunnerDropdownOptions()
 	// Play buttons
@@ -250,7 +319,7 @@ func createMainWindow() {
 
 	if launcher.Metadata.System == "linux" {
 		runnerSettingsBox.SetVisible(false)
-	} else if launcher.SelectedRunner == nil {
+	} else if launcher.GetSelectedRunner() == nil {
 		playButton.SetSensitive(false)
 		installButton.SetSensitive(false)
 	}

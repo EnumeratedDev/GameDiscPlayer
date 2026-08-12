@@ -75,9 +75,12 @@ func GetWindowsRunners() (runners []Runner, err error) {
 	}
 
 	// Get downloadable runners
+	if launcher.Offline {
+		return
+	}
 	githubReleases, err := GetGithubReleases(PROTON_GE_VERSION_REQUEST_URL)
 	if err != nil {
-		return runners, nil
+		return
 	}
 
 	for _, release := range githubReleases {
@@ -206,9 +209,12 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 	}
 
 	// Get downloadable runners
+	if launcher.Offline {
+		return
+	}
 	githubReleases, err := GetGithubReleases(MGBA_VERSION_REQUEST_URL)
 	if err != nil {
-		return runners, nil
+		return
 	}
 
 	for _, release := range githubReleases {
@@ -316,9 +322,12 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 	}
 
 	// Get downloadable runners
+	if launcher.Offline {
+		return
+	}
 	githubReleases, err := GetGithubReleases(DUCKSTATION_VERSION_REQUEST_URL)
 	if err != nil {
-		return runners, nil
+		return
 	}
 
 	for _, release := range githubReleases {
@@ -453,9 +462,12 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 	}
 
 	// Get downloadable runners
+	if launcher.Offline {
+		return
+	}
 	githubReleases, err := GetGithubReleases(PCSX2_VERSION_REQUEST_URL)
 	if err != nil {
-		return runners, nil
+		return
 	}
 
 	for _, release := range githubReleases {
@@ -874,13 +886,6 @@ func runWindowsRunner(runner *Runner) (err error) {
 		return
 	}
 
-	// Set game options
-	launcher.Options.Runner = runner.RunnerID
-	err = launcher.SaveOptions()
-	if err != nil {
-		return
-	}
-
 	prefixDir := filepath.Join(launcher.DataDir, "prefix")
 
 	// Run winetricks
@@ -951,13 +956,6 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 		return
 	}
 
-	// Set game options
-	launcher.Options.Runner = runner.RunnerID
-	err = launcher.SaveOptions()
-	if err != nil {
-		return
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1024,13 +1022,6 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 		return
 	}
 
-	// Set game options
-	launcher.Options.Runner = runner.RunnerID
-	err = launcher.SaveOptions()
-	if err != nil {
-		return
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1088,13 +1079,6 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 
 	// Download runner if required
 	err = runner.Download()
-	if err != nil {
-		return
-	}
-
-	// Set game options
-	launcher.Options.Runner = runner.RunnerID
-	err = launcher.SaveOptions()
 	if err != nil {
 		return
 	}

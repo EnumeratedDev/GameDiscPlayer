@@ -35,6 +35,11 @@ func (launcher *Launcher) ParseOptions() (err error) {
 
 	launcher.Options = options
 
+	// Set selected runner
+	if launcher.SelectedRunner == "" && launcher.Options.Runner != "" {
+		launcher.SelectedRunner = launcher.Options.Runner
+	}
+
 	return
 }
 

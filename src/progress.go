@@ -21,6 +21,16 @@ func NewProgressWindow(status string, progress int, total int) ProgressWindow {
 }
 
 func NewProgressWindow64(status string, progress int64, total int64) ProgressWindow {
+	if launcher.NoGUI {
+		return ProgressWindow{
+			value:       progress,
+			total:       total,
+			window:      nil,
+			statusLabel: nil,
+			progressBar: nil,
+		}
+	}
+
 	ch := make(chan ProgressWindow)
 	glib.IdleAdd(func() {
 		window := gtk.NewApplicationWindow(launcher.App)
@@ -149,6 +159,10 @@ func (window *ProgressWindow) IsClosed() bool {
 }
 
 func (window *ProgressWindow) Close() {
+	if window.IsClosed() {
+		return
+	}
+
 	glib.IdleAdd(func() {
 		if window.timeoutHandle != 0 {
 			glib.SourceRemove(window.timeoutHandle)

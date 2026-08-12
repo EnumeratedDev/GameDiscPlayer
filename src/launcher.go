@@ -20,7 +20,11 @@ type Launcher struct {
 	App        *gtk.Application
 	MainWindow *gtk.ApplicationWindow
 
-	SelectedRunner *Runner
+	Runners        []Runner
+	SelectedRunner string
+
+	NoGUI   bool
+	Offline bool
 
 	GameProcess *os.Process
 }
@@ -29,15 +33,21 @@ var launcher = Launcher{Options: Options{}}
 
 func (launcher *Launcher) Play() {
 	// Hide main launcher window
-	glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(false)
-		launcher.MainWindow.SetVisible(false)
-	})
+	if !launcher.NoGUI {
+		glib.IdleAdd(func() {
+			launcher.MainWindow.SetSensitive(false)
+			launcher.MainWindow.SetVisible(false)
+		})
+	}
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if !launcher.IsGameInstalled() && !launcher.Metadata.RunFromDisc {
+		log.Fatalf("game cannot be run from disc")
 	}
 
 	// Copy BIOS files
@@ -48,8 +58,6 @@ func (launcher *Launcher) Play() {
 				continue
 			}
 
-			fmt.Println(entry.Name())
-
 			CopyRecursivelyWithProgress(filepath.Join("bios", entry.Name()),
 				filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", entry.Name(), "bios"),
 				true)
@@ -58,6 +66,7 @@ func (launcher *Launcher) Play() {
 
 	if launcher.Metadata.System == "linux" {
 		// Run Linux binary/script
+		fmt.Println("Launching native Linux game...")
 
 		// Get working directory
 		workDir, err := os.Getwd()
@@ -92,42 +101,85 @@ func (launcher *Launcher) Play() {
 			log.Fatal(err)
 		}
 		launcher.GameProcess = nil
-	} else {
-		err := launcher.SelectedRunner.Run()
+	} else if runner := launcher.GetSelectedRunner(); runner != nil {
+		// Set game options
+		launcher.Options.Runner = launcher.SelectedRunner
+		launcher.SaveOptions()
+
+		fmt.Printf("Launching %s game using %s...\n", systemsUserReadable[launcher.Metadata.System], runner.DisplayName)
+		err := runner.Run()
 		if err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		log.Fatalf("invalid runner_id")
 	}
 
 	// Show main launcher window
-	glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(true)
-		launcher.MainWindow.SetVisible(true)
-	})
+	if !launcher.NoGUI {
+		glib.IdleAdd(func() {
+			launcher.MainWindow.SetSensitive(true)
+			launcher.MainWindow.SetVisible(true)
+		})
+	}
+}
+
+func (launcher *Launcher) FetchAvailableRunners() (err error) {
+	runnerFetcher, ok := RunnerFetchers[launcher.Metadata.System]
+	if ok {
+		launcher.Runners, err = runnerFetcher()
+		if err != nil {
+			return
+		}
+
+		if len(launcher.Runners) > 0 && launcher.SelectedRunner == "" {
+			launcher.SelectedRunner = launcher.Runners[0].RunnerID
+		}
+	}
+
+	return
+}
+
+func (launcher *Launcher) GetSelectedRunner() *Runner {
+	for _, runner := range launcher.Runners {
+		if runner.RunnerID == launcher.SelectedRunner {
+			return &runner
+		}
+	}
+
+	return nil
 }
 
 func (launcher *Launcher) OpenRunnerSettings() {
 	// Hide main launcher window
-	glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(false)
-		launcher.MainWindow.SetVisible(false)
-	})
+	if !launcher.NoGUI {
+		glib.IdleAdd(func() {
+			launcher.MainWindow.SetSensitive(false)
+			launcher.MainWindow.SetVisible(false)
+		})
+	}
 
-	if launcher.SelectedRunner != nil {
-		err := launcher.SelectedRunner.OpenSettings()
+	if launcher.GetSelectedRunner() != nil {
+		err := launcher.GetSelectedRunner().OpenSettings()
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
 	// Show main launcher window
-	glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(true)
-		launcher.MainWindow.SetVisible(true)
-	})
+	if !launcher.NoGUI {
+		glib.IdleAdd(func() {
+			launcher.MainWindow.SetSensitive(true)
+			launcher.MainWindow.SetVisible(true)
+		})
+	}
 }
 
 func (launcher *Launcher) Install() {
+	if _, err := os.Stat(".installed"); err == nil {
+		log.Fatalf("cannot reinstall game from installation directory")
+	}
+
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -162,10 +214,6 @@ func (launcher *Launcher) Install() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Set game options
-	launcher.Options.Runner = launcher.SelectedRunner.RunnerID
-	launcher.SaveOptions()
 
 	// Copy launcher into game files
 	exe, err := os.Executable()
@@ -204,6 +252,12 @@ Categories=Game;
 	}
 	f.Close()
 
+	// Set game options
+	if launcher.Metadata.System != "linux" && launcher.GetSelectedRunner() != nil {
+		launcher.Options.Runner = launcher.SelectedRunner
+	}
+	launcher.SaveOptions()
+
 	// Copy BIOS files
 	biosSystems, err := os.ReadDir("bios")
 	if err == nil {
@@ -234,7 +288,7 @@ Categories=Game;
 		}
 
 		// Download runner if required
-		launcher.SelectedRunner.Download()
+		launcher.GetSelectedRunner().Download()
 
 		prefixDir := filepath.Join(launcher.DataDir, "prefix")
 
@@ -252,7 +306,7 @@ Categories=Game;
 
 			// Setup environment
 			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.SelectedRunner.Exec)
+			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.GetSelectedRunner().Exec)
 			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
 			err = cmd.Run()
@@ -265,11 +319,19 @@ Categories=Game;
 	}
 
 	// Restart launcher
-	syscall.Exec(exe, nil, os.Environ())
+	if !launcher.NoGUI {
+		syscall.Exec(exe, os.Args[1:], os.Environ())
+	}
 }
 
 func (launcher *Launcher) Uninstall() {
-	shouldQuit := launcher.IsRunningFromInstallationDirectory()
+	shouldQuit := launcher.IsRunningFromInstallationDirectory() || launcher.NoGUI
+
+	if _, err := os.Stat(launcher.DataDir); os.IsNotExist(err) {
+		return
+	} else if err != nil {
+		log.Fatal(err)
+	}
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
@@ -294,7 +356,7 @@ func (launcher *Launcher) Uninstall() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		syscall.Exec(exe, nil, os.Environ())
+		syscall.Exec(exe, os.Args[1:], os.Environ())
 	}
 }
 
