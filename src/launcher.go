@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"syscall"
 
 	"github.com/diamondburned/gotk4/pkg/glib/v2"
@@ -87,6 +88,13 @@ func (launcher *Launcher) Play() {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
+		// Run with MangoHud
+		mangohudPath, err := exec.LookPath("mangohud")
+		if err == nil && launcher.Options.Mangohud {
+			cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+			cmd.Path = mangohudPath
+		}
+
 		// Setup environment
 		cmd.Env = cmd.Environ()
 		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
@@ -115,13 +123,15 @@ func (launcher *Launcher) Play() {
 		log.Fatalf("invalid runner_id")
 	}
 
-	// Show main launcher window
-	if !launcher.NoGUI {
-		glib.IdleAdd(func() {
-			launcher.MainWindow.SetSensitive(true)
-			launcher.MainWindow.SetVisible(true)
-		})
+	if launcher.NoGUI || launcher.Options.ExitOnPlay {
+		os.Exit(0)
 	}
+
+	// Show main launcher window
+	glib.IdleAdd(func() {
+		launcher.MainWindow.SetSensitive(true)
+		launcher.MainWindow.SetVisible(true)
+	})
 }
 
 func (launcher *Launcher) FetchAvailableRunners() (err error) {

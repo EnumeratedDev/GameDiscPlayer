@@ -10,6 +10,8 @@ import (
 
 type Options struct {
 	Runner      string   `yaml:"runner,omitempty"`
+	ExitOnPlay  bool     `yaml:"exit_on_play,omitempty"`
+	Mangohud    bool     `yaml:"mangohud,omitempty"`
 	Environment []string `yaml:"environment,omitempty"`
 }
 

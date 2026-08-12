@@ -899,6 +899,13 @@ func runWindowsRunner(runner *Runner) (err error) {
 		cmd.Stderr = os.Stderr
 		cmd.Dir = filepath.Join(workDir, "files")
 
+		// Run with MangoHud
+		mangohudPath, err := exec.LookPath("mangohud")
+		if err == nil && launcher.Options.Mangohud {
+			cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+			cmd.Path = mangohudPath
+		}
+
 		// Setup environment
 		cmd.Env = os.Environ()
 		cmd.Env = append(cmd.Env, "PROTONPATH="+runner.Exec)
@@ -922,6 +929,13 @@ func runWindowsRunner(runner *Runner) (err error) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
@@ -992,6 +1006,13 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
+
 	// Setup environment
 	cmd.Env = cmd.Environ()
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
@@ -1051,6 +1072,13 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
@@ -1114,6 +1142,13 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
+
 	// Setup environment
 	cmd.Env = cmd.Environ()
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
@@ -1167,6 +1202,13 @@ func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
+
 	// Setup environment
 	cmd.Env = cmd.Environ()
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
@@ -1212,6 +1254,13 @@ func openSettingsPlaystation1Runner(runner *Runner) (err error) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
@@ -1259,6 +1308,13 @@ func openSettingsPlaystation2Runner(runner *Runner) (err error) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
