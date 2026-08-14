@@ -282,11 +282,22 @@ func createMainWindow() {
 			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil)
 		})
 	}
+
 	setRunnerDropdownOptions()
-	// Play buttons
+	// Play button
 	playButton := gtk.NewButtonWithLabel("Play")
 	playButton.ConnectClicked(func() {
 		go launcher.Play()
+
+		if launcher.Options.ExitOnPlay {
+			launcher.MainWindow.SetVisible(false)
+		}
+	})
+	// Stop button
+	stopButton := gtk.NewButtonWithLabel("Stop")
+	stopButton.SetVisible(false)
+	stopButton.ConnectClicked(func() {
+		launcher.Stop()
 	})
 	// Install and uninstall buttons
 	installButton := gtk.NewButtonWithLabel("Install")
@@ -324,6 +335,53 @@ func createMainWindow() {
 		installButton.SetSensitive(false)
 	}
 
+	// Setup events
+	EventSubscribe("game_state_changed", func(args ...any) {
+		state := args[0].(string)
+		switch state {
+		case "idle":
+			if launcher.Options.ExitOnPlay {
+				launcher.MainWindow.Close()
+			}
+
+			runnerDropdown.SetSensitive(true)
+			runnerSettingsButton.SetSensitive(true)
+			playButton.SetVisible(true)
+			playButton.SetSensitive(true)
+			stopButton.SetVisible(false)
+			installButton.SetSensitive(true)
+			uninstallButton.SetSensitive(true)
+
+			if launcher.IsGameInstalled() {
+				playButton.SetLabel("Play")
+			} else if launcher.Metadata.RunFromDisc {
+				playButton.SetLabel("Play from disc")
+			} else {
+				playButton.SetLabel("Play from disc (This game can't run from disc)")
+				playButton.SetSensitive(false)
+			}
+		case "launching":
+			runnerDropdown.SetSensitive(false)
+			runnerSettingsButton.SetSensitive(false)
+			playButton.SetSensitive(false)
+			stopButton.SetVisible(false)
+			installButton.SetSensitive(false)
+			uninstallButton.SetSensitive(false)
+
+			playButton.SetLabel("Launching...")
+		case "running":
+			runnerDropdown.SetSensitive(false)
+			runnerSettingsButton.SetSensitive(false)
+			playButton.SetVisible(false)
+			playButton.SetSensitive(false)
+			stopButton.SetVisible(true)
+			installButton.SetSensitive(false)
+			uninstallButton.SetSensitive(false)
+
+			playButton.SetLabel("Running...")
+		}
+	})
+
 	labelBox.Append(gameIcon)
 	labelBox.Append(versionScrolledWindow)
 	labelBox.Append(developerScrolledWindow)
@@ -337,6 +395,7 @@ func createMainWindow() {
 	mainBox.Append(runnerSettingsBox)
 
 	mainBox.Append(playButton)
+	mainBox.Append(stopButton)
 	mainBox.Append(installButton)
 	mainBox.Append(uninstallButton)
 

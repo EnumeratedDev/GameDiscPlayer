@@ -9,7 +9,6 @@ import (
 	"slices"
 	"syscall"
 
-	"github.com/diamondburned/gotk4/pkg/glib/v2"
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
@@ -33,13 +32,7 @@ type Launcher struct {
 var launcher = Launcher{Options: Options{}}
 
 func (launcher *Launcher) Play() {
-	// Hide main launcher window
-	if !launcher.NoGUI {
-		glib.IdleAdd(func() {
-			launcher.MainWindow.SetSensitive(false)
-			launcher.MainWindow.SetVisible(false)
-		})
-	}
+	EventEmit("game_state_changed", "launching")
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
@@ -103,11 +96,10 @@ func (launcher *Launcher) Play() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		EventEmit("game_state_changed", "running")
 		launcher.GameProcess = cmd.Process
-		err = cmd.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
+		cmd.Wait()
+		EventEmit("game_state_changed", "idle")
 		launcher.GameProcess = nil
 	} else if runner := launcher.GetSelectedRunner(); runner != nil {
 		// Set game options
@@ -126,12 +118,14 @@ func (launcher *Launcher) Play() {
 	if launcher.NoGUI || launcher.Options.ExitOnPlay {
 		os.Exit(0)
 	}
+}
 
-	// Show main launcher window
-	glib.IdleAdd(func() {
-		launcher.MainWindow.SetSensitive(true)
-		launcher.MainWindow.SetVisible(true)
-	})
+func (launcher *Launcher) Stop() {
+	if launcher.GameProcess == nil {
+		return
+	}
+
+	launcher.GameProcess.Kill()
 }
 
 func (launcher *Launcher) FetchAvailableRunners() (err error) {
@@ -161,27 +155,11 @@ func (launcher *Launcher) GetSelectedRunner() *Runner {
 }
 
 func (launcher *Launcher) OpenRunnerSettings() {
-	// Hide main launcher window
-	if !launcher.NoGUI {
-		glib.IdleAdd(func() {
-			launcher.MainWindow.SetSensitive(false)
-			launcher.MainWindow.SetVisible(false)
-		})
-	}
-
 	if launcher.GetSelectedRunner() != nil {
 		err := launcher.GetSelectedRunner().OpenSettings()
 		if err != nil {
 			log.Fatal(err)
 		}
-	}
-
-	// Show main launcher window
-	if !launcher.NoGUI {
-		glib.IdleAdd(func() {
-			launcher.MainWindow.SetSensitive(true)
-			launcher.MainWindow.SetVisible(true)
-		})
 	}
 }
 

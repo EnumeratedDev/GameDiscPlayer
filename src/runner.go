@@ -948,11 +948,10 @@ func runWindowsRunner(runner *Runner) (err error) {
 		return
 	}
 	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
-	if err != nil {
-		return
-	}
+	EventEmit("game_state_changed", "running")
+	cmd.Wait()
 	launcher.GameProcess = nil
+	EventEmit("game_state_changed", "idle")
 
 	return
 }
@@ -1022,10 +1021,10 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 		return
 	}
 	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
-	if err != nil {
-		return
-	}
+	EventEmit("game_state_changed", "running")
+	cmd.Wait()
+	launcher.GameProcess = nil
+	EventEmit("game_state_changed", "idle")
 
 	return
 }
@@ -1089,11 +1088,10 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 		return
 	}
 	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
-	if err != nil {
-		return
-	}
+	EventEmit("game_state_changed", "running")
+	cmd.Wait()
 	launcher.GameProcess = nil
+	EventEmit("game_state_changed", "idle")
 
 	return
 }
@@ -1158,11 +1156,10 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 		return
 	}
 	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
-	if err != nil {
-		return
-	}
+	EventEmit("game_state_changed", "running")
+	cmd.Wait()
 	launcher.GameProcess = nil
+	EventEmit("game_state_changed", "idle")
 
 	return
 }
@@ -1213,12 +1210,7 @@ func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
 	cmd.Env = cmd.Environ()
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
-	err = cmd.Start()
-	if err != nil {
-		return
-	}
-	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
+	err = cmd.Run()
 	if err != nil {
 		return
 	}
@@ -1266,12 +1258,7 @@ func openSettingsPlaystation1Runner(runner *Runner) (err error) {
 	cmd.Env = cmd.Environ()
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
-	err = cmd.Start()
-	if err != nil {
-		return
-	}
-	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
+	err = cmd.Run()
 	if err != nil {
 		return
 	}
@@ -1320,16 +1307,11 @@ func openSettingsPlaystation2Runner(runner *Runner) (err error) {
 	cmd.Env = cmd.Environ()
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
-	err = cmd.Start()
+	err = cmd.Run()
 	if err != nil {
 		return
 	}
-	launcher.GameProcess = cmd.Process
-	err = cmd.Wait()
-	if err != nil {
-		return
-	}
-	launcher.GameProcess = nil
+	cmd.Wait()
 
 	return
 }
