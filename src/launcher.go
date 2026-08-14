@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -59,6 +58,19 @@ func (launcher *Launcher) Play() {
 	}
 
 	if runner := launcher.GetSelectedRunner(); runner != nil {
+		// Download runner if required
+		if runner.NeedsDownload() {
+			if !confirmDownload(runner) {
+				EventEmit("game_state_changed", "idle")
+				return
+			}
+
+			err = runner.Download()
+			if err != nil {
+				return
+			}
+		}
+
 		// Set game options
 		launcher.Options.Runner = launcher.SelectedRunner
 		launcher.SaveOptions()
@@ -128,6 +140,19 @@ func (launcher *Launcher) GetSelectedRunner() *Runner {
 
 func (launcher *Launcher) OpenRunnerSettings() {
 	if runner := launcher.GetSelectedRunner(); runner != nil {
+		// Download runner if required
+		if runner.NeedsDownload() {
+			if !confirmDownload(runner) {
+				EventEmit("game_state_changed", "idle")
+				return
+			}
+
+			err := runner.Download()
+			if err != nil {
+				return
+			}
+		}
+
 		err := runner.OpenSettings()
 		if err != nil {
 			log.Fatal(err)
@@ -231,62 +256,6 @@ Categories=Game;
 			CopyRecursivelyWithProgress(filepath.Join("bios", entry.Name()),
 				filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", entry.Name(), "bios"),
 				true)
-		}
-	}
-
-	switch launcher.Metadata.System {
-	case "windows":
-		// Check for umu
-		umuPath, err := exec.LookPath("umu-run")
-		if err != nil {
-			umuPath = filepath.Join(homeDir, ".local/bin/umu-run")
-			_, err = os.Stat(umuPath)
-			if err != nil {
-				err = DownloadUmu()
-				if err != nil {
-					log.Fatal(err)
-				}
-			}
-		}
-
-		// Download runner if required
-		if launcher.GetSelectedRunner().NeedsDownload() {
-			if !confirmDownload(launcher.GetSelectedRunner()) {
-				EventEmit("game_state_changed", "idle")
-				return
-			}
-
-			err = launcher.GetSelectedRunner().Download()
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
-
-		prefixDir := filepath.Join(launcher.DataDir, "prefix")
-
-		// Setup prefix
-		if _, err := os.Stat(prefixDir); err != nil && len(launcher.Metadata.WinetricksVerbs) > 0 {
-			progressWindow := NewProgressWindow("Setting up prefix...", 0, 1)
-			progressWindow.Pulse()
-
-			// Setup command
-			cmd := exec.Command(umuPath, "winetricks")
-			cmd.Args = append(cmd.Args, launcher.Metadata.WinetricksVerbs...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			cmd.Dir = filepath.Join(launcher.DataDir, "files")
-
-			// Setup environment
-			cmd.Env = os.Environ()
-			cmd.Env = append(cmd.Env, "PROTONPATH="+launcher.GetSelectedRunner().Exec)
-			cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
-
-			err = cmd.Run()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			progressWindow.Close()
 		}
 	}
 

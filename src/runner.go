@@ -965,24 +965,12 @@ func runWindowsRunner(runner *Runner) (err error) {
 		}
 	}
 
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	prefixDir := filepath.Join(launcher.DataDir, "prefix")
 
 	// Run winetricks
 	if _, err := os.Stat(prefixDir); err != nil && len(launcher.Metadata.WinetricksVerbs) > 0 {
 		progressWindow := NewProgressWindow("Setting up prefix...", 0, 1)
+		progressWindow.Pulse()
 
 		// Setup command
 		cmd := exec.Command("umu-run", "winetricks")
@@ -1055,19 +1043,6 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 		log.Fatal(err)
 	}
 
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1135,19 +1110,6 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 		return
 	}
 
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1209,19 +1171,6 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 		return
 	}
 
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1278,19 +1227,6 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 }
 
 func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	// Open settings
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1339,19 +1275,6 @@ func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
 }
 
 func openSettingsPlaystation1Runner(runner *Runner) (err error) {
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
@@ -1394,19 +1317,6 @@ func openSettingsPlaystation1Runner(runner *Runner) (err error) {
 }
 
 func openSettingsPlaystation2Runner(runner *Runner) (err error) {
-	// Download runner if required
-	if runner.NeedsDownload() {
-		if !confirmDownload(runner) {
-			EventEmit("game_state_changed", "idle")
-			return
-		}
-
-		err = runner.Download()
-		if err != nil {
-			return
-		}
-	}
-
 	// Run game
 	cmd := exec.Command(runner.Exec)
 	if runner.IsFlatpak() {
