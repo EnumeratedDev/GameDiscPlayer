@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
 
 const PROTON_GE_VERSION_REQUEST_URL = "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases?per_page=75"
@@ -23,6 +25,10 @@ type Runner struct {
 	Type        string
 	System      string
 	Exec        string
+
+	Homepage     string
+	License      string
+	DownloadSize int64
 
 	downloadFunc     func(runner *Runner) error
 	runFunc          func(runner *Runner) error
@@ -83,6 +89,8 @@ func GetWindowsRunners() (runners []Runner, err error) {
 						Type:        "proton",
 						System:      "windows",
 						Exec:        entryPath,
+						Homepage:    "https://github.com/GloriousEggroll/proton-ge-custom",
+						License:     "BSD-3-Clause",
 						runFunc:     runWindowsRunner})
 				}
 			}
@@ -121,6 +129,9 @@ func GetWindowsRunners() (runners []Runner, err error) {
 				Type:         "proton",
 				System:       "windows",
 				Exec:         release.Assets[assetId].BrowserDownloadUrl,
+				Homepage:     "https://github.com/GloriousEggroll/proton-ge-custom",
+				License:      "BSD-3-Clause",
+				DownloadSize: release.Assets[assetId].Size,
 				downloadFunc: downloadWindowsRunner,
 				runFunc:      runWindowsRunner})
 		}
@@ -151,6 +162,8 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				Type:             "mgba",
 				System:           "gba",
 				Exec:             mgbaPath,
+				Homepage:         "https://mgba.io",
+				License:          "MPL-2.0",
 				runFunc:          runGameboyAdvanceRunner,
 				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
@@ -167,6 +180,8 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				Type:             "mgba",
 				System:           "gba",
 				Exec:             mgbaPath,
+				Homepage:         "https://mgba.io",
+				License:          "MPL-2.0",
 				runFunc:          runGameboyAdvanceRunner,
 				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
@@ -184,6 +199,8 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				Type:             "mgba",
 				System:           "gba",
 				Exec:             "io.mgba.mGBA",
+				Homepage:         "https://mgba.io",
+				License:          "MPL-2.0",
 				runFunc:          runGameboyAdvanceRunner,
 				openSettingsFunc: openSettingsGameboyAdvanceRunner,
 			})
@@ -214,6 +231,8 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 					Type:             "mgba",
 					System:           "gba",
 					Exec:             filepath.Join(entryPath, "mgba"),
+					Homepage:         "https://mgba.io",
+					License:          "MPL-2.0",
 					runFunc:          runGameboyAdvanceRunner,
 					openSettingsFunc: openSettingsGameboyAdvanceRunner,
 				})
@@ -255,6 +274,9 @@ func GetGameboyAdvanceRunners() (runners []Runner, err error) {
 				Type:             "mgba",
 				System:           "gba",
 				Exec:             release.Assets[assetId].BrowserDownloadUrl,
+				Homepage:         "https://mgba.io",
+				License:          "MPL-2.0",
+				DownloadSize:     release.Assets[assetId].Size,
 				downloadFunc:     downloadGameboyAdvanceRunner,
 				runFunc:          runGameboyAdvanceRunner,
 				openSettingsFunc: openSettingsGameboyAdvanceRunner,
@@ -292,6 +314,8 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 				Type:             "duckstation",
 				System:           "ps1",
 				Exec:             duckstationPath,
+				Homepage:         "https://www.duckstation.org",
+				License:          "CC-BY-NC-ND-4.0",
 				runFunc:          runPlaystation1Runner,
 				openSettingsFunc: openSettingsPlaystation1Runner,
 			})
@@ -327,6 +351,8 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 					Type:             "duckstation",
 					System:           "ps1",
 					Exec:             filepath.Join(entryPath, "duckstation"),
+					Homepage:         "https://www.duckstation.org",
+					License:          "CC-BY-NC-ND-4.0",
 					runFunc:          runPlaystation1Runner,
 					openSettingsFunc: openSettingsPlaystation1Runner,
 				})
@@ -373,6 +399,9 @@ func GetPlaystation1Runners() (runners []Runner, err error) {
 				Type:             "duckstation",
 				System:           "ps1",
 				Exec:             release.Assets[assetId].BrowserDownloadUrl,
+				Homepage:         "https://www.duckstation.org",
+				License:          "CC-BY-NC-ND-4.0",
+				DownloadSize:     release.Assets[assetId].Size,
 				downloadFunc:     downloadPlaystation1Runner,
 				runFunc:          runPlaystation1Runner,
 				openSettingsFunc: openSettingsPlaystation1Runner,
@@ -410,6 +439,8 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 				Type:             "pcsx2",
 				System:           "ps2",
 				Exec:             pcsx2Path,
+				Homepage:         "https://pcsx2.net",
+				License:          "GPL-3.0-or-later",
 				runFunc:          runPlaystation2Runner,
 				openSettingsFunc: openSettingsPlaystation2Runner,
 			})
@@ -432,6 +463,8 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 				Type:             "pcsx2",
 				System:           "ps2",
 				Exec:             "net.pcsx2.PCSX2",
+				Homepage:         "https://pcsx2.net",
+				License:          "GPL-3.0-or-later",
 				runFunc:          runPlaystation2Runner,
 				openSettingsFunc: openSettingsPlaystation2Runner,
 			})
@@ -467,6 +500,8 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 					Type:             "pcsx2",
 					System:           "ps2",
 					Exec:             filepath.Join(entryPath, "pcsx2"),
+					Homepage:         "https://pcsx2.net",
+					License:          "GPL-3.0-or-later",
 					runFunc:          runPlaystation2Runner,
 					openSettingsFunc: openSettingsPlaystation2Runner,
 				})
@@ -511,6 +546,9 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 				Type:             "pcsx2",
 				System:           "ps2",
 				Exec:             release.Assets[assetId].BrowserDownloadUrl,
+				Homepage:         "https://pcsx2.net",
+				License:          "GPL-3.0-or-later",
+				DownloadSize:     release.Assets[assetId].Size,
 				downloadFunc:     downloadPlaystation2Runner,
 				runFunc:          runPlaystation2Runner,
 				openSettingsFunc: openSettingsPlaystation2Runner,
@@ -522,9 +560,6 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 }
 
 func downloadWindowsRunner(runner *Runner) (err error) {
-	if !strings.HasPrefix(runner.Exec, "https://") && !strings.HasPrefix(runner.Exec, "http://") {
-		return
-	}
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
@@ -564,9 +599,6 @@ func downloadWindowsRunner(runner *Runner) (err error) {
 }
 
 func downloadGameboyAdvanceRunner(runner *Runner) (err error) {
-	if !strings.HasPrefix(runner.Exec, "https://") && !strings.HasPrefix(runner.Exec, "http://") {
-		return
-	}
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
@@ -649,9 +681,6 @@ gba.bios=../bios/gba_bios.bin
 }
 
 func downloadPlaystation1Runner(runner *Runner) (err error) {
-	if !strings.HasPrefix(runner.Exec, "https://") && !strings.HasPrefix(runner.Exec, "http://") {
-		return
-	}
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
@@ -741,9 +770,6 @@ OpenPauseMenu = Keyboard/Escape`
 }
 
 func downloadPlaystation2Runner(runner *Runner) (err error) {
-	if !strings.HasPrefix(runner.Exec, "https://") && !strings.HasPrefix(runner.Exec, "http://") {
-		return
-	}
 
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
@@ -940,9 +966,16 @@ func runWindowsRunner(runner *Runner) (err error) {
 	}
 
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	prefixDir := filepath.Join(launcher.DataDir, "prefix")
@@ -1023,9 +1056,16 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 	}
 
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	// Run game
@@ -1096,9 +1136,16 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 	}
 
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	// Run game
@@ -1163,9 +1210,16 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 	}
 
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	// Run game
@@ -1225,9 +1279,16 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 
 func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	// Open settings
@@ -1279,9 +1340,16 @@ func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
 
 func openSettingsPlaystation1Runner(runner *Runner) (err error) {
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	// Run game
@@ -1327,9 +1395,16 @@ func openSettingsPlaystation1Runner(runner *Runner) (err error) {
 
 func openSettingsPlaystation2Runner(runner *Runner) (err error) {
 	// Download runner if required
-	err = runner.Download()
-	if err != nil {
-		return
+	if runner.NeedsDownload() {
+		if !confirmDownload(runner) {
+			EventEmit("game_state_changed", "idle")
+			return
+		}
+
+		err = runner.Download()
+		if err != nil {
+			return
+		}
 	}
 
 	// Run game
@@ -1375,8 +1450,37 @@ func openSettingsPlaystation2Runner(runner *Runner) (err error) {
 	return
 }
 
+func confirmDownload(runner *Runner) bool {
+	dialog := gtk.NewMessageDialog(&launcher.MainWindow.Window, gtk.DialogFlags(gtk.DialogModal)|gtk.DialogDestroyWithParent, gtk.MessageType(gtk.MessageInfo), gtk.ButtonsType(gtk.ButtonsYesNo))
+	dialog.SetTitle("Download " + runner.DisplayName + "?")
+	dialog.SetMarkup(fmt.Sprintf(`Do you want to download <b>%s</b>?
+
+Source: <b>%s</b>
+License: <b>%s</b>
+Download Size: <b>%s</b>`, runner.DisplayName, runner.Homepage, runner.License, BytesToHumanReadable(runner.DownloadSize)))
+	dialog.SetVisible(true)
+
+	ch := make(chan bool, 1)
+
+	dialog.ConnectResponse(func(responseId int) {
+		if responseId == int(gtk.ResponseYes) {
+			ch <- true
+		} else {
+			ch <- false
+		}
+
+		dialog.Destroy()
+	})
+
+	return <-ch
+}
+
+func (runner *Runner) NeedsDownload() bool {
+	return strings.HasPrefix(runner.Exec, "https://") && !strings.HasPrefix(runner.Exec, "http://")
+}
+
 func (runner *Runner) Download() error {
-	if !strings.HasPrefix(runner.Exec, "http://") && !strings.HasPrefix(runner.Exec, "https://") {
+	if !runner.NeedsDownload() {
 		return nil
 	}
 

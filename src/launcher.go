@@ -250,7 +250,17 @@ Categories=Game;
 		}
 
 		// Download runner if required
-		launcher.GetSelectedRunner().Download()
+		if launcher.GetSelectedRunner().NeedsDownload() {
+			if !confirmDownload(launcher.GetSelectedRunner()) {
+				EventEmit("game_state_changed", "idle")
+				return
+			}
+
+			err = launcher.GetSelectedRunner().Download()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
 
 		prefixDir := filepath.Join(launcher.DataDir, "prefix")
 
