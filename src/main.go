@@ -297,7 +297,7 @@ func createMainWindow() {
 	stopButton := gtk.NewButtonWithLabel("Stop")
 	stopButton.SetVisible(false)
 	stopButton.ConnectClicked(func() {
-		launcher.Stop()
+		go launcher.Stop()
 	})
 	// Install and uninstall buttons
 	installButton := gtk.NewButtonWithLabel("Install")
@@ -347,6 +347,7 @@ func createMainWindow() {
 			playButton.SetVisible(true)
 			playButton.SetSensitive(true)
 			stopButton.SetVisible(false)
+			stopButton.SetSensitive(false)
 			installButton.SetSensitive(true)
 			uninstallButton.SetSensitive(true)
 
@@ -361,8 +362,10 @@ func createMainWindow() {
 		case "launching":
 			runnerDropdown.SetSensitive(false)
 			runnerSettingsButton.SetSensitive(false)
+			playButton.SetVisible(true)
 			playButton.SetSensitive(false)
 			stopButton.SetVisible(false)
+			stopButton.SetSensitive(false)
 			installButton.SetSensitive(false)
 			uninstallButton.SetSensitive(false)
 
@@ -373,10 +376,22 @@ func createMainWindow() {
 			playButton.SetVisible(false)
 			playButton.SetSensitive(false)
 			stopButton.SetVisible(true)
+			stopButton.SetSensitive(true)
 			installButton.SetSensitive(false)
 			uninstallButton.SetSensitive(false)
 
-			playButton.SetLabel("Running...")
+			stopButton.SetLabel("Stop")
+		case "stopping":
+			runnerDropdown.SetSensitive(false)
+			runnerSettingsButton.SetSensitive(false)
+			playButton.SetVisible(false)
+			playButton.SetSensitive(false)
+			stopButton.SetVisible(true)
+			stopButton.SetSensitive(false)
+			installButton.SetSensitive(false)
+			uninstallButton.SetSensitive(false)
+
+			stopButton.SetLabel("Stopping...")
 		}
 	})
 

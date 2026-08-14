@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
 )
@@ -81,7 +82,22 @@ func (launcher *Launcher) Stop() {
 		return
 	}
 
-	launcher.GameProcess.Kill()
+	EventEmit("game_state_changed", "stopping")
+
+	done := make(chan bool, 1)
+	go func() {
+		launcher.GameProcess.Wait()
+		done <- true
+	}()
+
+	launcher.GameProcess.Signal(syscall.SIGTERM)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		launcher.GameProcess.Kill()
+	}
+
+	EventEmit("game_state_changed", "idle")
 }
 
 func (launcher *Launcher) FetchAvailableRunners() (err error) {
