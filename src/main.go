@@ -328,9 +328,7 @@ func createMainWindow() {
 		}
 	}
 
-	if launcher.Metadata.System == "linux" {
-		runnerSettingsBox.SetVisible(false)
-	} else if launcher.GetSelectedRunner() == nil {
+	if launcher.GetSelectedRunner() == nil {
 		playButton.SetSensitive(false)
 		installButton.SetSensitive(false)
 	}

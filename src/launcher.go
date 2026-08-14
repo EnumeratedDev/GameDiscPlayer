@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"syscall"
 
 	"github.com/diamondburned/gotk4/pkg/gtk/v4"
@@ -58,50 +57,7 @@ func (launcher *Launcher) Play() {
 		}
 	}
 
-	if launcher.Metadata.System == "linux" {
-		// Run Linux binary/script
-		fmt.Println("Launching native Linux game...")
-
-		// Get working directory
-		workDir, err := os.Getwd()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Run game
-		var cmd *exec.Cmd
-		if launcher.IsGameInstalled() {
-			cmd = exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
-			cmd.Dir = filepath.Join(launcher.DataDir, "files")
-		} else {
-			cmd = exec.Command(filepath.Join(workDir, "files", launcher.Metadata.Run))
-			cmd.Dir = filepath.Join(workDir, "files")
-		}
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		// Run with MangoHud
-		mangohudPath, err := exec.LookPath("mangohud")
-		if err == nil && launcher.Options.Mangohud {
-			cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
-			cmd.Path = mangohudPath
-		}
-
-		// Setup environment
-		cmd.Env = cmd.Environ()
-		cmd.Env = append(cmd.Env, launcher.Options.Environment...)
-
-		err = cmd.Start()
-		if err != nil {
-			log.Fatal(err)
-		}
-		EventEmit("game_state_changed", "running")
-		launcher.GameProcess = cmd.Process
-		cmd.Wait()
-		EventEmit("game_state_changed", "idle")
-		launcher.GameProcess = nil
-	} else if runner := launcher.GetSelectedRunner(); runner != nil {
+	if runner := launcher.GetSelectedRunner(); runner != nil {
 		// Set game options
 		launcher.Options.Runner = launcher.SelectedRunner
 		launcher.SaveOptions()
@@ -155,11 +111,13 @@ func (launcher *Launcher) GetSelectedRunner() *Runner {
 }
 
 func (launcher *Launcher) OpenRunnerSettings() {
-	if launcher.GetSelectedRunner() != nil {
-		err := launcher.GetSelectedRunner().OpenSettings()
+	if runner := launcher.GetSelectedRunner(); runner != nil {
+		err := runner.OpenSettings()
 		if err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		log.Fatalf("invalid runner_id")
 	}
 }
 
@@ -241,7 +199,7 @@ Categories=Game;
 	f.Close()
 
 	// Set game options
-	if launcher.Metadata.System != "linux" && launcher.GetSelectedRunner() != nil {
+	if launcher.GetSelectedRunner() != nil {
 		launcher.Options.Runner = launcher.SelectedRunner
 	}
 	launcher.SaveOptions()

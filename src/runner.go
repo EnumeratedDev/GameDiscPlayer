@@ -30,12 +30,27 @@ type Runner struct {
 }
 
 var RunnerFetchers = map[string]func() ([]Runner, error){
+	"linux":   GetLinuxRunners,
 	"windows": GetWindowsRunners,
 	"gb":      GetGameboyAdvanceRunners,
 	"gbc":     GetGameboyAdvanceRunners,
 	"gba":     GetGameboyAdvanceRunners,
 	"ps1":     GetPlaystation1Runners,
 	"ps2":     GetPlaystation2Runners,
+}
+
+func GetLinuxRunners() (runners []Runner, err error) {
+	runners = make([]Runner, 0)
+
+	// Get native runner
+	runners = append(runners, Runner{
+		DisplayName: "Native",
+		RunnerID:    "native",
+		Type:        "native",
+		System:      "linux",
+		runFunc:     runLinuxRunner})
+
+	return
 }
 
 func GetWindowsRunners() (runners []Runner, err error) {
@@ -850,6 +865,50 @@ CheckAtStartup = false
 	default:
 		return fmt.Errorf("unknown runner type")
 	}
+
+	return
+}
+
+func runLinuxRunner(runner *Runner) (err error) {
+	// Get working directory
+	workDir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+
+	// Run game
+	var cmd *exec.Cmd
+	if launcher.IsGameInstalled() {
+		cmd = exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+		cmd.Dir = filepath.Dir(cmd.Path)
+	} else {
+		cmd = exec.Command(filepath.Join(workDir, "files", launcher.Metadata.Run))
+		cmd.Dir = filepath.Dir(cmd.Path)
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Run with MangoHud
+	mangohudPath, err := exec.LookPath("mangohud")
+	if err == nil && launcher.Options.Mangohud {
+		cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
+		cmd.Path = mangohudPath
+	}
+
+	// Setup environment
+	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
+
+	err = cmd.Start()
+	if err != nil {
+		return
+	}
+	launcher.GameProcess = cmd.Process
+	EventEmit("game_state_changed", "running")
+	cmd.Wait()
+	launcher.GameProcess = nil
+	EventEmit("game_state_changed", "idle")
 
 	return
 }
