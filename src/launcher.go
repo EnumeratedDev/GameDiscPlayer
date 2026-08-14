@@ -142,15 +142,7 @@ func (launcher *Launcher) OpenRunnerSettings() {
 	if runner := launcher.GetSelectedRunner(); runner != nil {
 		// Download runner if required
 		if runner.NeedsDownload() {
-			if !confirmDownload(runner) {
-				EventEmit("game_state_changed", "idle")
-				return
-			}
-
-			err := runner.Download()
-			if err != nil {
-				return
-			}
+			log.Fatalf("runner is not installed")
 		}
 
 		err := runner.OpenSettings()

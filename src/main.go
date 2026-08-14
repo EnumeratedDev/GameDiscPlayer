@@ -262,7 +262,7 @@ func createMainWindow() {
 				launcher.SelectedRunner = runner.RunnerID
 				selected = i
 			}
-			if strings.HasPrefix(runner.Exec, "https://") || strings.HasPrefix(runner.Exec, "http://") {
+			if runner.NeedsDownload() {
 				options = append(options, fmt.Sprintf("%s (Downloadable)", runner.DisplayName))
 			} else {
 				options = append(options, runner.DisplayName)
@@ -271,7 +271,7 @@ func createMainWindow() {
 		runnerDropdown.SetModel(gtk.NewStringList(options))
 		if selected >= 0 {
 			runnerDropdown.SetSelected(uint(selected))
-			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil)
+			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil && !launcher.GetSelectedRunner().NeedsDownload())
 		} else {
 			launcher.SelectedRunner = launcher.Runners[0].RunnerID
 		}
@@ -279,7 +279,7 @@ func createMainWindow() {
 		runnerDropdown.Connect("notify::selected", func() {
 			launcher.SelectedRunner = launcher.Runners[runnerDropdown.Selected()].RunnerID
 
-			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil)
+			runnerSettingsButton.SetVisible(launcher.GetSelectedRunner().openSettingsFunc != nil && !launcher.GetSelectedRunner().NeedsDownload())
 		})
 	}
 
@@ -341,6 +341,10 @@ func createMainWindow() {
 			if launcher.Options.ExitOnPlay {
 				launcher.MainWindow.Close()
 			}
+
+			// Update dropdown options
+			launcher.FetchAvailableRunners()
+			setRunnerDropdownOptions()
 
 			runnerDropdown.SetSensitive(true)
 			runnerSettingsButton.SetSensitive(true)
