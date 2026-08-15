@@ -559,7 +559,6 @@ func GetPlaystation2Runners() (runners []Runner, err error) {
 }
 
 func downloadWindowsRunner(runner *Runner) (err error) {
-
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -597,21 +596,21 @@ func downloadWindowsRunner(runner *Runner) (err error) {
 	return
 }
 
-func downloadGameboyAdvanceRunner(runner *Runner) (err error) {
-
+func downloadGameboyAdvanceRunner(runner *Runner) error {
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return
+		return err
 	}
 
 	// Download runner
 	switch runner.Type {
 	case "mgba":
-		filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName, "mgba")
+		runnersDir := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System)
+		filename := filepath.Join(runnersDir, runner.DisplayName, "mgba")
 		err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 		if err != nil {
-			return
+			return err
 		}
 
 		// Make downloaded file executable
@@ -624,49 +623,30 @@ func downloadGameboyAdvanceRunner(runner *Runner) (err error) {
 		var f *os.File
 		f, err = os.Create(filepath.Join(filepath.Dir(filename), "portable.ini"))
 		if err != nil && !os.IsExist(err) {
-			return
+			return err
 		}
 		f.Close()
 
-		// Create saves directory
-		err = os.MkdirAll(filepath.Join(filepath.Dir(filename), "saves"), 0755)
-		if err != nil {
-			return
-		}
-		// Create cheats directory
-		err = os.MkdirAll(filepath.Join(filepath.Dir(filename), "cheats"), 0755)
-		if err != nil {
-			return
-		}
-		// Create screenshots directory
-		err = os.MkdirAll(filepath.Join(filepath.Dir(filename), "screenshots"), 0755)
-		if err != nil {
-			return
-		}
-		// Create patches directory
-		err = os.MkdirAll(filepath.Join(filepath.Dir(filename), "patches"), 0755)
-		if err != nil {
-			return
+		// Create shared directories
+		for _, sharedDir := range []string{"states", "cheats", "screenshots", "saves", "patches", "bios"} {
+			err = os.MkdirAll(filepath.Join(runnersDir, "shared", sharedDir), 0755)
+			if err != nil {
+				return err
+			}
 		}
 
 		config := `[ports.qt]
-savestatePath=states
-cheatsPath=cheats
-screenshotPath=screenshots
-savegamePath=saves
-patchPath=patches
-gb.bios=../bios/gb_bios.bin
-gbc.bios=../bios/gbc_bios.bin
-sgb.bios=../bios/sgb_bios.bin
-gba.bios=../bios/gba_bios.bin
+savestatePath=../shared/states
+cheatsPath=../shared/cheats
+screenshotPath=../shared/screenshots
+savegamePath=../shared/saves
+patchPath=../shared/patches
+gb.bios=../shared/bios/gb_bios.bin
+gbc.bios=../shared/bios/gbc_bios.bin
+sgb.bios=../shared/bios/sgb_bios.bin
+gba.bios=../shared/bios/gba_bios.bin
 `
 		err = os.WriteFile(filepath.Join(filepath.Dir(filename), "config.ini"), []byte(config), 0644)
-		if err != nil {
-			return err
-		}
-
-		// Create bios directory
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, "bios"), 0755)
 		if err != nil {
 			return err
 		}
@@ -676,24 +656,24 @@ gba.bios=../bios/gba_bios.bin
 		return fmt.Errorf("unknown runner type")
 	}
 
-	return
+	return nil
 }
 
-func downloadPlaystation1Runner(runner *Runner) (err error) {
-
+func downloadPlaystation1Runner(runner *Runner) error {
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return
+		return err
 	}
 
 	// Download runner
 	switch runner.Type {
 	case "duckstation":
-		filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName, "duckstation")
+		runnersDir := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System)
+		filename := filepath.Join(runnersDir, runner.DisplayName, "duckstation")
 		err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 		if err != nil {
-			return
+			return err
 		}
 
 		// Make downloaded file executable
@@ -709,8 +689,17 @@ func downloadPlaystation1Runner(runner *Runner) (err error) {
 		}
 		f.Close()
 
+		// Create shared directories
+		for _, sharedDir := range []string{"savestates", "screenshots", "videos", "bios", "memcards"} {
+			err = os.MkdirAll(filepath.Join(runnersDir, "shared", sharedDir), 0755)
+			if err != nil {
+				return err
+			}
+		}
+
 		config := `[Main]
 NoDesktopFile = true
+SetupWizardIncomplete = false
 
 [UI]
 Theme =
@@ -718,8 +707,17 @@ Theme =
 [AutoUpdater]
 CheckAtStartup = false
 
+[Folders]
+SaveStates = ../shared/savestates
+Screenshots = ../shared/screenshots
+Videos = ../shared/videos
+
 [BIOS]
-SearchDirectory = ../bios
+PatchFastBoot = false
+SearchDirectory = ../shared/bios
+
+[MemoryCards]
+Directory = ../shared/memcards
 
 [Pad1]
 Circle = Keyboard/L
@@ -754,22 +752,15 @@ OpenPauseMenu = Keyboard/Escape`
 			return err
 		}
 
-		// Create bios directory
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, "bios"), 0755)
-		if err != nil {
-			return err
-		}
-
 		runner.Exec = filename
 	default:
 		return fmt.Errorf("unknown runner type")
 	}
 
-	return
+	return nil
 }
 
 func downloadPlaystation2Runner(runner *Runner) (err error) {
-
 	// Get user home directory
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -779,7 +770,8 @@ func downloadPlaystation2Runner(runner *Runner) (err error) {
 	// Download runner
 	switch runner.Type {
 	case "pcsx2":
-		filename := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, runner.DisplayName, "pcsx2")
+		runnersDir := filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System)
+		filename := filepath.Join(runnersDir, runner.DisplayName, "pcsx2")
 		err = DownloadFile(runner.Exec, filename, runner.DisplayName)
 		if err != nil {
 			return
@@ -791,13 +783,27 @@ func downloadPlaystation2Runner(runner *Runner) (err error) {
 			return err
 		}
 
+		// Create shared directories
+		for _, sharedDir := range []string{"bios", "memcards", "cheats", "snapshots", "savestates", "covers", "videos", "cache"} {
+			err = os.MkdirAll(filepath.Join(runnersDir, "shared", sharedDir), 0755)
+			if err != nil {
+				return err
+			}
+		}
+
 		config := `[UI]
 SettingsVersion = 1
 Theme =
 
-
 [Folders]
-Bios = ../../bios
+Bios = ../../shared/bios
+MemoryCards = ../../shared/memcards
+Cheats = ../../shared/cheats
+Snapshots = ../../shared/snapshots
+Savestates = ../../shared/savestates
+Covers = ../../shared/covers
+Videos = ../../shared/videos
+Cache = ../../shared/cache
 
 [EmuCore]
 EnableFastBoot = false
@@ -875,15 +881,9 @@ CheckAtStartup = false
 		if err != nil {
 			return
 		}
-		err = os.WriteFile(filepath.Join(filepath.Dir(filename), "PCSX2.ini"), []byte(config), 0644)
+		err = os.WriteFile(filepath.Join(filepath.Dir(filename), "PCSX2/inis/PCSX2.ini"), []byte(config), 0644)
 		if err != nil {
 			return
-		}
-
-		// Create bios directory
-		err = os.MkdirAll(filepath.Join(homeDir, ".local/share/GameDiscPlayer/runners", runner.System, "bios"), 0755)
-		if err != nil {
-			return err
 		}
 
 		runner.Exec = filename
