@@ -220,7 +220,7 @@ func createMainWindow() {
 
 	// Description text view
 	descriptionTextView := gtk.NewTextView()
-	descriptionTextView.Buffer().SetText(launcher.Metadata.Description)
+	descriptionTextView.Buffer().InsertMarkup(descriptionTextView.Buffer().StartIter(), launcher.Metadata.Description)
 	descriptionTextView.SetWrapMode(gtk.WrapMode(gtk.WrapWord))
 	descriptionTextView.SetLeftMargin(10)
 	descriptionTextView.SetRightMargin(10)
