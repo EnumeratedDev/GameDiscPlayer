@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -993,7 +992,7 @@ func runWindowsRunner(runner *Runner) (err error) {
 
 		err = cmd.Run()
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		progressWindow.Close()
@@ -1040,7 +1039,7 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		return
 	}
 
 	// Run game
@@ -1048,7 +1047,7 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 	if runner.IsFlatpak() {
 		flatpakPath, err := exec.LookPath("flatpak")
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		cmd.Path = flatpakPath
 		cmd.Args = append(cmd.Args, "run", runner.Exec)
@@ -1232,7 +1231,7 @@ func openSettingsGameboyAdvanceRunner(runner *Runner) (err error) {
 	if runner.IsFlatpak() {
 		flatpakPath, err := exec.LookPath("flatpak")
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		cmd.Path = flatpakPath
 		cmd.Args = append(cmd.Args, "run", runner.Exec)
@@ -1280,7 +1279,7 @@ func openSettingsPlaystation1Runner(runner *Runner) (err error) {
 	if runner.IsFlatpak() {
 		flatpakPath, err := exec.LookPath("flatpak")
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 		cmd.Path = flatpakPath
 		cmd.Args = append(cmd.Args, "run", runner.Exec)
