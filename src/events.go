@@ -1,5 +1,7 @@
 package main
 
+import "github.com/diamondburned/gotk4/pkg/core/glib"
+
 var events = make(map[string][]func(args ...any))
 
 func EventSubscribe(eventID string, f func(args ...any)) {
@@ -13,7 +15,9 @@ func EventEmit(eventID string, args ...any) {
 		}
 
 		for _, f := range v {
-			f(args...)
+			glib.IdleAdd(func() {
+				f(args...)
+			})
 		}
 	}
 }

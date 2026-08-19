@@ -806,17 +806,19 @@ func ShowErrorMessage(err error) {
 		return
 	}
 
-	dialog := gtk.NewMessageDialog(&launcher.MainWindow.Window, gtk.DialogFlags(gtk.DialogModal)|gtk.DialogDestroyWithParent, gtk.MessageType(gtk.MessageInfo), gtk.ButtonsType(gtk.ButtonsOK))
-	dialog.SetTitle("Launcher error")
-	dialog.SetMarkup("Error: " + err.Error())
-	dialog.SetVisible(true)
-
 	ch := make(chan bool, 1)
 
-	dialog.ConnectResponse(func(responseId int) {
-		ch <- true
+	glib.IdleAdd(func() {
+		dialog := gtk.NewMessageDialog(&launcher.MainWindow.Window, gtk.DialogFlags(gtk.DialogModal)|gtk.DialogDestroyWithParent, gtk.MessageType(gtk.MessageInfo), gtk.ButtonsType(gtk.ButtonsOK))
+		dialog.SetTitle("Launcher error")
+		dialog.SetMarkup("Error: " + err.Error())
+		dialog.ConnectResponse(func(responseId int) {
+			ch <- true
 
-		dialog.Destroy()
+			dialog.Destroy()
+		})
+
+		dialog.SetVisible(true)
 	})
 
 	// Wait for response
