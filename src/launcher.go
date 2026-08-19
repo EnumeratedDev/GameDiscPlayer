@@ -26,6 +26,8 @@ type Launcher struct {
 	Runners        []Runner
 	SelectedRunner string
 
+	SelectedLaunchOption int
+
 	NoGUI   bool
 	Offline bool
 
@@ -40,6 +42,8 @@ func SetupLauncher() {
 	launcher.App.AddMainOption("offline", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Do not fetch downloadable runners from the internet", "")
 	launcher.App.AddMainOption("runner", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgString), "Set the runner to use", "runner_id")
 	launcher.App.AddMainOption("list-runners", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "List all available runners", "")
+	launcher.App.AddMainOption("launch-option", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgInt), "Set the launch option", "")
+	launcher.App.AddMainOption("list-launch-options", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "List all launch options", "")
 	launcher.App.AddMainOption("play", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and launch the game", "")
 	launcher.App.AddMainOption("settings", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and open runner settings", "")
 	launcher.App.AddMainOption("install", 0, glib.OptionFlags(glib.OptionFlagNone), glib.OptionArg(glib.OptionArgNone), "Skip the launcher and install game", "")
@@ -94,6 +98,17 @@ func handleLocalOptions(options *glib.VariantDict) (gint int) {
 	if v := options.LookupValue("runner", glib.NewVariantType("s")); v != nil {
 		launcher.SelectedRunner = v.String()
 	}
+	fmt.Println(options.Contains("launch-option"))
+	if v := options.LookupValue("launch-option", glib.NewVariantType("i")); v != nil {
+		handleStartup()
+
+		launcher.SelectedLaunchOption = int(v.Int32()) - 1
+		if launcher.SelectedLaunchOption < 0 {
+			log.Fatalf("launch option index cannot be less than 1")
+		} else if launcher.SelectedLaunchOption > len(launcher.Metadata.LaunchOptions)-1 {
+			log.Fatalf("launch option index cannot be greater than %d", len(launcher.Metadata.LaunchOptions))
+		}
+	}
 	if options.Contains("list-runners") {
 		launcher.NoGUI = true
 		handleStartup()
@@ -103,6 +118,15 @@ func handleLocalOptions(options *glib.VariantDict) (gint int) {
 			isInstalled := !strings.HasPrefix(runner.Exec, "http://") && !strings.HasPrefix(runner.Exec, "https://")
 
 			fmt.Printf("%s\t%s\t%s\t%t\n", runner.RunnerID, runner.DisplayName, runner.Type, isInstalled)
+		}
+		return 0
+	} else if options.Contains("list-launch-options") {
+		launcher.NoGUI = true
+		handleStartup()
+
+		fmt.Println("Option ID\tDisplay Name\tExec")
+		for i, launchOption := range launcher.Metadata.LaunchOptions {
+			fmt.Printf("%d\t%s\t%s\n", i+1, launchOption.DisplayName, launchOption.Exec)
 		}
 		return 0
 	}
@@ -477,9 +501,14 @@ func createLaunchOptionsWindow() int {
 }
 
 func (launcher *Launcher) Play() {
-	launchOptionIndex := createLaunchOptionsWindow()
-	if launchOptionIndex < 0 {
-		return
+	var launchOptionIndex int
+	if !launcher.NoGUI {
+		launchOptionIndex = createLaunchOptionsWindow()
+		if launchOptionIndex < 0 {
+			return
+		}
+	} else {
+		launchOptionIndex = launcher.SelectedLaunchOption
 	}
 
 	EventEmit("game_state_changed", "launching")
