@@ -327,6 +327,11 @@ func createMainWindow() {
 		installButton.SetSensitive(false)
 	}
 
+	if len(launcher.Metadata.LaunchOptions) == 0 {
+		playButton.SetLabel("Play (Game has no declared launch options)")
+		playButton.SetSensitive(false)
+	}
+
 	// Setup events
 	EventSubscribe("game_state_changed", func(args ...any) {
 		state := args[0].(string)
@@ -413,7 +418,70 @@ func createMainWindow() {
 	launcher.MainWindow.SetChild(mainBox)
 }
 
+func createLaunchOptionsWindow() int {
+	if len(launcher.Metadata.LaunchOptions) == 0 {
+		return -1
+	} else if len(launcher.Metadata.LaunchOptions) == 1 {
+		return 0
+	}
+
+	ch := make(chan int, 1)
+
+	glib.IdleAdd(func() {
+		launcher.MainWindow.SetSensitive(false)
+
+		// Setup launch options window
+		window := gtk.NewApplicationWindow(launcher.App)
+		window.SetTitle("Launch options")
+		window.SetDefaultSize(300, 200)
+		window.SetResizable(false)
+		window.ConnectCloseRequest(func() bool {
+			ch <- -1
+			return false
+		})
+
+		// Vertical box
+		box := gtk.NewBox(gtk.Orientation(gtk.OrientationVertical), 10)
+		box.SetMarginTop(10)
+		box.SetMarginBottom(10)
+		box.SetMarginStart(10)
+		box.SetMarginEnd(10)
+
+		// Scrolled window
+		scrolledWindow := gtk.NewScrolledWindow()
+		scrolledWindow.SetPolicy(gtk.PolicyType(gtk.PolicyNever), gtk.PolicyType(gtk.PolicyAutomatic))
+
+		// Launch option buttons
+		for i, launchOption := range launcher.Metadata.LaunchOptions {
+			button := gtk.NewButtonWithLabel("Launch " + launchOption.DisplayName)
+			button.ConnectClicked(func() {
+				ch <- i
+				window.Close()
+			})
+
+			box.Append(button)
+		}
+
+		scrolledWindow.SetChild(box)
+		window.SetChild(scrolledWindow)
+		window.SetVisible(true)
+	})
+
+	ret := <-ch
+
+	glib.IdleAdd(func() {
+		launcher.MainWindow.SetSensitive(true)
+	})
+
+	return ret
+}
+
 func (launcher *Launcher) Play() {
+	launchOptionIndex := createLaunchOptionsWindow()
+	if launchOptionIndex < 0 {
+		return
+	}
+
 	EventEmit("game_state_changed", "launching")
 
 	// Get user home directory
@@ -462,8 +530,8 @@ func (launcher *Launcher) Play() {
 		launcher.Options.Runner = launcher.SelectedRunner
 		launcher.SaveOptions()
 
-		fmt.Printf("Launching %s game using %s...\n", systemsUserReadable[launcher.Metadata.System], runner.DisplayName)
-		err := runner.Run()
+		fmt.Printf("Launching %s game with launch option '%s' using %s...\n", systemsUserReadable[launcher.Metadata.System], launcher.Metadata.LaunchOptions[launchOptionIndex].DisplayName, runner.DisplayName)
+		err := runner.Run(launchOptionIndex)
 		if err != nil {
 			ShowErrorMessage(err)
 			EventEmit("game_state_changed", "idle")

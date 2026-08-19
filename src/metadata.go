@@ -8,14 +8,20 @@ import (
 )
 
 type Metadata struct {
-	Name            string   `yaml:"name"`
-	Description     string   `yaml:"description"`
-	Version         string   `yaml:"version"`
-	Developer       string   `yaml:"developer"`
-	Publisher       string   `yaml:"publisher"`
-	RunFromDisc     bool     `yaml:"run_from_disc"`
-	System          string   `yaml:"system"`
-	Run             string   `yaml:"run"`
+	Name          string         `yaml:"name"`
+	Description   string         `yaml:"description"`
+	Version       string         `yaml:"version"`
+	Developer     string         `yaml:"developer"`
+	Publisher     string         `yaml:"publisher"`
+	RunFromDisc   bool           `yaml:"run_from_disc"`
+	System        string         `yaml:"system"`
+	LaunchOptions []LaunchOption `yaml:"launch_options"`
+}
+
+type LaunchOption struct {
+	DisplayName     string   `yaml:"display_name"`
+	Exec            string   `yaml:"exec"`
+	Environment     []string `yaml:"environment"`
 	WinetricksVerbs []string `yaml:"winetricks_verbs"`
 }
 

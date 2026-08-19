@@ -30,7 +30,7 @@ type Runner struct {
 	DownloadSize int64
 
 	downloadFunc     func(runner *Runner) error
-	runFunc          func(runner *Runner) error
+	runFunc          func(runner *Runner, launchOption int) error
 	openSettingsFunc func(runner *Runner) error
 }
 
@@ -894,7 +894,9 @@ CheckAtStartup = false
 	return
 }
 
-func runLinuxRunner(runner *Runner) (err error) {
+func runLinuxRunner(runner *Runner, launchOptionIndex int) (err error) {
+	launchOption := launcher.Metadata.LaunchOptions[launchOptionIndex]
+
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -904,10 +906,10 @@ func runLinuxRunner(runner *Runner) (err error) {
 	// Run game
 	var cmd *exec.Cmd
 	if launcher.IsGameInstalled() {
-		cmd = exec.Command(filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+		cmd = exec.Command(filepath.Join(launcher.DataDir, "files", launchOption.Exec))
 		cmd.Dir = filepath.Dir(cmd.Path)
 	} else {
-		cmd = exec.Command(filepath.Join(workDir, "files", launcher.Metadata.Run))
+		cmd = exec.Command(filepath.Join(workDir, "files", launchOption.Exec))
 		cmd.Dir = filepath.Dir(cmd.Path)
 	}
 	cmd.Stdin = os.Stdin
@@ -923,6 +925,7 @@ func runLinuxRunner(runner *Runner) (err error) {
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launchOption.Environment...)
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
 	err = cmd.Start()
@@ -938,7 +941,9 @@ func runLinuxRunner(runner *Runner) (err error) {
 	return
 }
 
-func runWindowsRunner(runner *Runner) (err error) {
+func runWindowsRunner(runner *Runner, launchOptionIndex int) (err error) {
+	launchOption := launcher.Metadata.LaunchOptions[launchOptionIndex]
+
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -967,26 +972,20 @@ func runWindowsRunner(runner *Runner) (err error) {
 	prefixDir := filepath.Join(launcher.DataDir, "prefix")
 
 	// Run winetricks
-	if _, err := os.Stat(prefixDir); err != nil && len(launcher.Metadata.WinetricksVerbs) > 0 {
+	if _, err := os.Stat(prefixDir); err != nil && len(launchOption.WinetricksVerbs) > 0 {
 		progressWindow := NewProgressWindow("Setting up prefix...", 0, 1)
 		progressWindow.Pulse()
 
 		// Setup command
 		cmd := exec.Command("umu-run", "winetricks")
-		cmd.Args = append(cmd.Args, launcher.Metadata.WinetricksVerbs...)
+		cmd.Args = append(cmd.Args, launchOption.WinetricksVerbs...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Dir = filepath.Join(workDir, "files")
 
-		// Run with MangoHud
-		mangohudPath, err := exec.LookPath("mangohud")
-		if err == nil && launcher.Options.Mangohud {
-			cmd.Args = slices.Insert(cmd.Args, 0, cmd.Path)
-			cmd.Path = mangohudPath
-		}
-
 		// Setup environment
 		cmd.Env = os.Environ()
+		cmd.Env = append(cmd.Env, launchOption.Environment...)
 		cmd.Env = append(cmd.Env, "PROTONPATH="+runner.Exec)
 		cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
 
@@ -999,7 +998,7 @@ func runWindowsRunner(runner *Runner) (err error) {
 	}
 
 	// Run game
-	cmd := exec.Command(umuPath, launcher.Metadata.Run)
+	cmd := exec.Command(umuPath, launchOption.Exec)
 	if launcher.IsGameInstalled() {
 		cmd.Dir = filepath.Join(launcher.DataDir, "files")
 	} else {
@@ -1018,6 +1017,7 @@ func runWindowsRunner(runner *Runner) (err error) {
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launchOption.Environment...)
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 	cmd.Env = append(cmd.Env, "PROTONPATH="+runner.Exec)
 	cmd.Env = append(cmd.Env, "WINEPREFIX="+prefixDir)
@@ -1035,7 +1035,9 @@ func runWindowsRunner(runner *Runner) (err error) {
 	return
 }
 
-func runGameboyAdvanceRunner(runner *Runner) (err error) {
+func runGameboyAdvanceRunner(runner *Runner, launchOptionIndex int) (err error) {
+	launchOption := launcher.Metadata.LaunchOptions[launchOptionIndex]
+
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -1067,9 +1069,9 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 		cmd.Args = append(cmd.Args, "--fullscreen")
 
 		if launcher.IsGameInstalled() {
-			cmd.Args = append(cmd.Args, filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+			cmd.Args = append(cmd.Args, filepath.Join(launcher.DataDir, "files", launchOption.Exec))
 		} else {
-			cmd.Args = append(cmd.Args, filepath.Join(workDir, "files", launcher.Metadata.Run))
+			cmd.Args = append(cmd.Args, filepath.Join(workDir, "files", launchOption.Exec))
 		}
 	default:
 		return fmt.Errorf("unknown runner type '%s'", runner.Type)
@@ -1087,6 +1089,7 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launchOption.Environment...)
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
 	err = cmd.Start()
@@ -1102,7 +1105,9 @@ func runGameboyAdvanceRunner(runner *Runner) (err error) {
 	return
 }
 
-func runPlaystation1Runner(runner *Runner) (err error) {
+func runPlaystation1Runner(runner *Runner, launchOptionIndex int) (err error) {
+	launchOption := launcher.Metadata.LaunchOptions[launchOptionIndex]
+
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -1128,9 +1133,9 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 		cmd.Args = append(cmd.Args, "-nogui", "-fullscreen")
 
 		if launcher.IsGameInstalled() {
-			cmd.Args = append(cmd.Args, filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+			cmd.Args = append(cmd.Args, filepath.Join(launcher.DataDir, "files", launchOption.Exec))
 		} else {
-			cmd.Args = append(cmd.Args, filepath.Join(workDir, "files", launcher.Metadata.Run))
+			cmd.Args = append(cmd.Args, filepath.Join(workDir, "files", launchOption.Exec))
 		}
 	default:
 		return fmt.Errorf("unknown runner type '%s'", runner.Type)
@@ -1148,6 +1153,7 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launchOption.Environment...)
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
 	err = cmd.Start()
@@ -1163,7 +1169,9 @@ func runPlaystation1Runner(runner *Runner) (err error) {
 	return
 }
 
-func runPlaystation2Runner(runner *Runner) (err error) {
+func runPlaystation2Runner(runner *Runner, launchOptionIndex int) (err error) {
+	launchOption := launcher.Metadata.LaunchOptions[launchOptionIndex]
+
 	// Get working directory
 	workDir, err := os.Getwd()
 	if err != nil {
@@ -1190,9 +1198,9 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 		cmd.Args = append(cmd.Args, "-nogui", "-fullscreen")
 
 		if launcher.IsGameInstalled() {
-			cmd.Args = append(cmd.Args, filepath.Join(launcher.DataDir, "files", launcher.Metadata.Run))
+			cmd.Args = append(cmd.Args, filepath.Join(launcher.DataDir, "files", launchOption.Exec))
 		} else {
-			cmd.Args = append(cmd.Args, filepath.Join(workDir, "files", launcher.Metadata.Run))
+			cmd.Args = append(cmd.Args, filepath.Join(workDir, "files", launchOption.Exec))
 		}
 	default:
 		return fmt.Errorf("unknown runner type '%s'", runner.Type)
@@ -1210,6 +1218,7 @@ func runPlaystation2Runner(runner *Runner) (err error) {
 
 	// Setup environment
 	cmd.Env = cmd.Environ()
+	cmd.Env = append(cmd.Env, launchOption.Environment...)
 	cmd.Env = append(cmd.Env, launcher.Options.Environment...)
 
 	err = cmd.Start()
@@ -1400,12 +1409,12 @@ func (runner *Runner) Download() error {
 	return runner.downloadFunc(runner)
 }
 
-func (runner *Runner) Run() error {
+func (runner *Runner) Run(launchOptionIndex int) error {
 	if runner.runFunc == nil {
 		return fmt.Errorf(runner.DisplayName + " runner is missing a play function")
 	}
 
-	return runner.runFunc(runner)
+	return runner.runFunc(runner, launchOptionIndex)
 }
 
 func (runner *Runner) OpenSettings() error {
